@@ -3,5 +3,5 @@ AddType text/html .shtml
 AddOutputFilter INCLUDES .shtml
 Options Indexes Includes
 IndexOptions FancyIndexing SuppressHTMLPreamble XHTML IconsAreLinks FoldersFirst SuppressDescription
-HeaderName header.html
-ReadmeName footer.html
+HeaderName .assets/header.html
+ReadmeName .assets/footer.html
