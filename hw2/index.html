@@ -1,0 +1,198 @@
+<script src=lib2.js></script>
+
+<body bgcolor=black text=white link=white alink=white vlink=white>
+<center>
+<canvas id='canvas1' width=600 height=600></canvas>
+</center>
+</body>
+
+
+<!!-------- VERTEX SHADER: YOU PROBABLY DON'T WANT TO CHANGE THIS RIGHT NOW -------->
+
+<script id='my_vertex_shader' type='x-shader/x-vertex'>
+   attribute vec3 aPos;
+   varying   vec3 vPos;
+   void main() {
+      gl_Position = vec4(aPos, 1.);
+      vPos = aPos;
+   }
+</script>
+
+
+<!!-------- FRAGMENT SHADER: THIS IS WHERE YOU WILL DO YOUR WORK -------->
+
+<script id='my_fragment_shader' type='x-shader/x-fragment'>
+uniform float uTime; // TIME, IN SECONDS
+
+varying vec3 vPos; // -1 < vPos.x < +1
+                   // -1 < vPos.y < +1
+                   //      vPos.z == 0
+
+float fl = 3.0;
+
+const int ns = 2;
+vec4 Sph[ns];
+vec3 Ambient [ns];
+vec3 Diffuse [ns];
+vec4 Specular[ns];
+
+// YOU MUST DEFINE A main() FUNCTION.
+
+void main() {
+    ////////////////////////////////////////////////
+    //
+    // HERE, FOR YOUR HOMEWORK, YOU CAN WRITE ANY
+    // CODE YOU LIKDEFINE A COLOR FOR THIS FRAGMENT.
+
+    // LIGHT DIRECTION AND COLOR
+
+    vec3 LDir = vec3(.5,.5,.5);
+    vec3 LCol = vec3(1.,1.,1.);
+
+    // SPHERE
+
+    Sph[0] = vec4(.5*sin(uTime),0.,.5*cos(uTime), 0.2);
+    Sph[1] = vec4(0.,0.,0., 0.2);
+
+    // SURFACE REFLECTANCE PROPERTIES
+
+    Ambient [0] = vec3(.1,.05,.05);    // r,g,b
+    Diffuse [0] = vec3(1.,.5,.5);      // r,g,b
+    Specular[0] = vec4(1.,.5,.5, 10.); // r,g,b,power
+
+    Ambient [1] = vec3(.05,.05,.1);    // r,g,b
+    Diffuse [1] = vec3(.5,.5,1.);      // r,g,b
+    Specular[1] = vec4(1.,.5,.5, 10.); // r,g,b,power
+
+    // INITIALIZE TO A BACKGROUND COLOR
+
+    vec3 color = vec3(.2, .3, .5);
+
+    // COMPUTE THE RAY ORIGIN AND DIRECTION
+
+    float x = vPos.x;
+    float y = vPos.y;
+
+    vec3 V = vec3(0.,0.,fl);
+    vec3 W = normalize(vec3(x, y, -fl));
+
+    // RAY TRACE TO ALL OBJECTS IN THE SCENE
+
+    float tMin = 10000.0;
+    for (int i = 0 ; i < ns ; i++) {
+
+       // SHIFT COORDINATES, SO THAT SPHERE IS AT (0,0,0)
+
+       vec3 Vp = V - Sph[i].xyz;
+
+       // SOLVE FOR QUADRATIC EQUATION IN t
+
+       float B = dot(W, Vp);
+       float C = dot(Vp, Vp) - Sph[i].w * Sph[i].w;
+       float D = B*B - C;
+       if (D > 0.) {
+          float t = -B - sqrt(D);
+
+          // IF RAY HITS SPHERE
+
+          if (t > 0. && t < tMin) {
+
+          // FIND SURFACE POINT AND NORMAL, DO SHADING
+
+             vec3 S = V + t * W;
+             vec3 N = normalize(S - Sph[i].xyz);
+
+             vec3 R = 2. * dot(N, LDir) * N - LDir;
+
+             color = Ambient[i]
+                     + Diffuse[i] * max(0.,dot(N,LDir)) * LCol
+                     + Specular[i].xyz
+                       * pow(max(0., dot(R, -W)), Specular[i].w) * LCol
+             ;
+
+             tMin = t;
+          }
+       }
+    }
+
+    // APPLY GAMMA CORRECTION AND SET THE PIXEL COLOR.
+
+    gl_FragColor = vec4(sqrt(color), 1.0);
+}
+</script>
+
+
+<!!-------- CREATE A PROPERLY DESCRIPTIVE TITLE BELOW -------->
+
+<script id='my_title' type='text/html'>
+RAY TRACING TO SPHERES
+</script>
+
+
+<!!-------- HERE IS WHERE YOU CAN PROVIDE A LONGER TEXT DESCRIPTION -------->
+
+<script id='my_instructions' type='text/html'><font color=#b0b0b0>
+We are implementing ray tracing<br>
+to multiple spheres with a single<br>
+light source and Phong shading.
+</script>
+
+
+<!!-------- YOU PROBABLY DON'T WANT TO CHANGE ANYTHING BELOW FOR NOW -------->
+   
+<script>
+
+// CREATE THE HTML DOCUMENT
+
+let vs = my_vertex_shader.innerHTML,
+    fs = my_fragment_shader.innerHTML;
+    fs = fs.substring(1, fs.length);
+
+document.body.innerHTML = [''
+   ,'<center><font size=6 color=#b0b0b0>' + my_title.innerHTML + '</center>'
+   ,'<TABLE cellspacing=0 cellpadding=0><TR>'
+   ,'<td width=50></td><td><font color=red size=5><div id=errorMessage>&nbsp;</div></font></td>'
+   ,'</TR><TR>'
+   ,'<table cellspacing=10>'
+   ,'<tr>'
+   ,'<td valign=top><font size=2 color=red><div id=errorMarker>&nbsp;</div></font></td>'
+   ,'<td valign=top>'
+   ,'<textArea id=textArea spellcheck=false '
+   ,'style="font:16px courier;outline-width:0;border-style:none;resize:none;overflow:scroll;"'
+   ,'></textArea>'
+   ,'</td><td valign=top>' + document.body.innerHTML + '</td>'
+   ,'<td valign=top><font size=5>' + my_instructions.innerHTML + '</td>'
+   ,'</tr></table>'
+   ,'</TR></TABLE>'
+   ].join('');
+
+// SET UP THE EDITABLE TEXT AREA ON THE LEFT SIDE.
+
+let text = fs.split('\n'), cols = 0;
+for (let i = 0 ; i < text.length ; i++)
+   cols = Math.max(cols, text[i].length);
+
+textArea.rows = text.length;
+textArea.cols = cols;
+textArea.value = fs;
+textArea.style.backgroundColor = '#202020';
+textArea.style.color = 'white';
+
+// REPARSE THE SHADER PROGRAM AFTER EVERY KEYSTROKE.
+
+textArea.onkeyup = function() { canvas1.setShaders(vs, this.value); }
+
+// SET THE CURRENT TIME IN SECONDS BEFORE RENDERING EACH FRAME.
+
+let startTime = Date.now();
+
+function animate(gl) {
+   let time = (Date.now() - startTime) / 1000;
+   setUniform('1f', 'uTime', time);
+}
+
+// START EVERYTHING.
+
+gl_start(canvas1, vs, fs);
+</script>
+
