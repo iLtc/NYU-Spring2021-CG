@@ -46,7 +46,7 @@ void main() {
 
     // LIGHT DIRECTION AND COLOR
 
-    vec3 LDir = vec3(.5,.5,.5);
+    vec3 LDir = vec3(.5*cos(uTime),.5,.5*sin(uTime));
     vec3 LCol = vec3(1.,1.,1.);
 
     // SPHERE
