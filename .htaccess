@@ -1,0 +1,7 @@
+RewriteEngine Off
+AddType text/html .shtml
+AddOutputFilter INCLUDES .shtml
+Options Indexes Includes
+IndexOptions FancyIndexing SuppressHTMLPreamble XHTML IconsAreLinks FoldersFirst SuppressDescription
+HeaderName header.html
+ReadmeName footer.html
