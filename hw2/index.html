@@ -35,6 +35,7 @@ vec4 Sph[ns];
 vec3 Ambient [ns];
 vec3 Diffuse [ns];
 vec4 Specular[ns];
+vec3 LDir[ns];
 
 // YOU MUST DEFINE A main() FUNCTION.
 
@@ -46,13 +47,14 @@ void main() {
 
     // LIGHT DIRECTION AND COLOR
 
-    vec3 LDir = vec3(.5*cos(uTime),.5,.5*sin(uTime));
+    LDir[0] = vec3(-.5*sin(uTime*1.5),.5,-.5*cos(uTime*1.5));
+    LDir[1] = vec3(.5*sin(uTime*1.5),.5,.5*cos(uTime*1.5));
     vec3 LCol = vec3(1.,1.,1.);
 
     // SPHERE
 
-    Sph[0] = vec4(.5*sin(uTime*1.5),0.,.5*cos(uTime*1.5), 0.2);
-    Sph[1] = vec4(-.5*sin(uTime*1.5),0.,-.5*cos(uTime*1.5), 0.2);
+    Sph[0] = vec4(.5*sin(uTime*1.5),-0.5,.5*cos(uTime*1.5), 0.2);
+    Sph[1] = vec4(-.5*sin(uTime*1.5),-0.5,-.5*cos(uTime*1.5), 0.2);
 
     // SURFACE REFLECTANCE PROPERTIES
 
@@ -102,10 +104,10 @@ void main() {
              vec3 S = V + t * W;
              vec3 N = normalize(S - Sph[i].xyz);
 
-             vec3 R = 2. * dot(N, LDir) * N - LDir;
+             vec3 R = 2. * dot(N, LDir[i]) * N - LDir[i];
 
              color = Ambient[i]
-                     + Diffuse[i] * max(0.,dot(N,LDir)) * LCol
+                     + Diffuse[i] * max(0.,dot(N,LDir[i])) * LCol
                      + Specular[i].xyz
                        * pow(max(0., dot(R, -W)), Specular[i].w) * LCol
              ;
