@@ -51,8 +51,8 @@ void main() {
 
     // SPHERE
 
-    Sph[0] = vec4(.5*sin(uTime),0.,.5*cos(uTime), 0.2);
-    Sph[1] = vec4(0.,0.,0., 0.2);
+    Sph[0] = vec4(.5*sin(uTime*1.5),0.,.5*cos(uTime*1.5), 0.2);
+    Sph[1] = vec4(-.5*sin(uTime*1.5),0.,-.5*cos(uTime*1.5), 0.2);
 
     // SURFACE REFLECTANCE PROPERTIES
 
