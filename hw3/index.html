@@ -79,6 +79,33 @@
     return color;
  }
 
+vec3 reflection(vec3 S, vec3 N, vec3 W, vec3 color) {
+    vec3 V_ = S + 0.1 * N;
+    vec3 W_ = 2. * dot(-W, N) * N - (-W);
+    
+    float tMin = 10000.0;
+
+    for (int i = 0; i < ns; i ++) {
+
+        //IF RAY HITS SPHERE
+
+        float t = raySphere(Sph[i], V_, W_);
+
+        if (t > 0. && t < tMin) {
+            // FIND SURFACE POINT AND NORMAL, THEN DO SHADING:
+
+            vec3 S_ = V_ + t * W_;
+            vec3 N_ = normalize(S_ - Sph[i].xyz);
+            vec3 color_ = shadeSphere(S_, N_, W_, Ambient[i], Diffuse[i], Specular[i]);
+            color = color * 0.7 + color_ * 0.3;
+
+            tMin = t;
+        }
+    }
+
+    return color;
+}
+
  // I VARY THE SKY COLOR DEPENDING ON Y. FEEL FREE TO MAKE A DIFFERENT SKY PATTERN:
 
  vec3 skyColor(float y) {
@@ -138,36 +165,9 @@
           vec3 N = normalize(S - Sph[i].xyz);
           color = shadeSphere(S, N, W, Ambient[i], Diffuse[i], Specular[i]);
 
-	  /////////////////////////////////////////////////////////////////////
-	  //
-	  // DO REFRACTION THROUGH TRANSPARENT SPHERE:
-          //
-	  // Compute refracted ray direction into front of sphere.
-	  // Shoot ray from front of sphere toward rear of sphere.
-	  // Compute surface point and normal at rear of sphere.
-	  // Compute emergent ray direction out of rear of sphere.
-          // Loop through all spheres:
-          //    Shoot emergent ray toward other sphere
-          //    If ray hits other sphere and this is the nearest hit so far:
-          //       compute other sphere surface point and normal.
-          //       shade other sphere to compute refraction color.
-          // If emergent ray has hit any sphere:
-          //    mix refraction color into color.
-          //
-	  // HINT: To compute the outgoing refracted ray direction when
-	  // going from a medium with refractive index n1 to refract index n2,
-	  // when the incoming ray is W, and the surface normal is N:
-          //
-	  // (1) Compute the component of W that is perpendicular to N.
-	  // (2) Scale that component vector by n1/n2.
-	  // (3) Use that result to build a new outgoing unit length ray.
-	  //
-	  /////////////////////////////////////////////////////////////////////
- 
-
-	  /////////////////////////////////////////////////////////////////////
-	  //
-	  // DO MIRROR REFLECTION:
+          /////////////////////////////////////////////////////////////////////
+    //
+    // DO MIRROR REFLECTION:
           //
           // Compute mirror ray direction by reflecting -W around N.
           // Loop through all spheres:
@@ -177,9 +177,39 @@
           //       shade other sphere to compute mirror color.
           // If mirror ray has hit any sphere:
           //    mix mirror color into color.
-	  //
-	  /////////////////////////////////////////////////////////////////////
+    //
+    /////////////////////////////////////////////////////////////////////
 
+          color = reflection(S, N, W, color);
+
+    /////////////////////////////////////////////////////////////////////
+    //
+    // DO REFRACTION THROUGH TRANSPARENT SPHERE:
+          //
+    // Compute refracted ray direction into front of sphere.
+    // Shoot ray from front of sphere toward rear of sphere.
+    // Compute surface point and normal at rear of sphere.
+    // Compute emergent ray direction out of rear of sphere.
+          // Loop through all spheres:
+          //    Shoot emergent ray toward other sphere
+          //    If ray hits other sphere and this is the nearest hit so far:
+          //       compute other sphere surface point and normal.
+          //       shade other sphere to compute refraction color.
+          // If emergent ray has hit any sphere:
+          //    mix refraction color into color.
+          //
+    // HINT: To compute the outgoing refracted ray direction when
+    // going from a medium with refractive index n1 to refract index n2,
+    // when the incoming ray is W, and the surface normal is N:
+          //
+    // (1) Compute the component of W that is perpendicular to N.
+    // (2) Scale that component vector by n1/n2.
+    // (3) Use that result to build a new outgoing unit length ray.
+    //
+    /////////////////////////////////////////////////////////////////////
+ 
+
+    
 
           tMin = t;
        }
@@ -189,6 +219,7 @@
 
     gl_FragColor = vec4(sqrt(color), 1.0);
  }
+
 </script>
 
 
