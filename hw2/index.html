@@ -71,8 +71,8 @@ void main() {
 
     // LIGHT DIRECTION AND COLOR
 
-    LDir[0] = vec3(-.5*sin(uTime*1.5),.5,-.5*cos(uTime*1.5));
-    LDir[1] = vec3(.5*sin(uTime*1.5),.5,.5*cos(uTime*1.5));
+    LDir[0] = normalize(vec3(-.5*sin(uTime*1.5),.5,-.5*cos(uTime*1.5)));
+    LDir[1] = normalize(vec3(.5*sin(uTime*1.5),.5,.5*cos(uTime*1.5)));
     vec3 LCol = vec3(1.,1.,1.);
 
     // SPHERE
