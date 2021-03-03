@@ -1,0 +1,275 @@
+<script src=lib3.js></script>
+
+<body bgcolor=black text=white link=white alink=white vlink=white>
+<center>
+<canvas id='canvas1' width=600 height=600></canvas>
+</center>
+</body>
+
+
+<!!-------- VERTEX SHADER: YOU PROBABLY DON'T WANT TO CHANGE THIS RIGHT NOW -------->
+
+<script id='my_vertex_shader' type='x-shader/x-vertex'>
+   attribute vec3 aPos;
+   varying   vec3 vPos;
+   void main() {
+      gl_Position = vec4(aPos, 1.);
+      vPos = aPos;
+   }
+</script>
+
+
+<!!-------- FRAGMENT SHADER: THIS IS WHERE YOU WILL DO YOUR WORK -------->
+
+<script id='my_fragment_shader' type='x-shader/x-fragment'>
+
+ uniform float uTime;   // TIME, IN SECONDS
+
+ varying vec3 vPos;     // -1 < vPos.x < +1
+                        // -1 < vPos.y < +1
+                        //      vPos.z == 0
+
+ float fl = 3.0;
+
+ const int nl = 2;
+ uniform vec3 uLDir[nl];
+ uniform vec3 uLCol[nl];
+
+ const int ns = 2;
+ vec4 Sph[ns];
+ vec3 Ambient [ns];
+ vec3 Diffuse [ns];
+ vec4 Specular[ns];
+
+ // INTERSECT A RAY WITH A SPHERE:
+
+ float raySphere(vec4 Sph, vec3 V, vec3 W) {
+    V -= Sph.xyz;
+    float B = dot(W, V);
+    float C = dot(V, V) - Sph.w * Sph.w;
+    float D = B*B - C;
+    return D > 0. ? -B - sqrt(D) : -1.;
+ }
+
+ ////////// YOU MIGHT FIND THE FOLLOWING FUNCTION USEFUL FOR IMPLEMENTING REFRACTION:
+
+ float raySphereExit(vec4 Sph, vec3 V, vec3 W) {
+    // Same as raySphere, except you return the second root, rather than the first.
+    return 0.;
+ }
+
+ // SHADE A SPHERE, GIVEN A SURFACE POINT, SURFACE NORMAL AND INCOMING RAY DIRECTION:
+
+ vec3 shadeSphere(vec3 S, vec3 N, vec3 W, vec3 ambient, vec3 diffuse, vec4 specular) {
+    vec3 color = ambient;
+    for (int j = 0 ; j < nl ; j++) {
+
+       // IF NOT IN SHADOW, DO SHADING:
+
+       float t = -1.;
+       for (int k = 0 ; k < ns ; k++)
+          t = max(t, raySphere(Sph[k], S, uLDir[j]));
+
+       if (t < 0.) {
+          vec3 R = 2. * dot(uLDir[j], N) * N - uLDir[j];
+          color += diffuse * max(0.,dot(N,uLDir[j])) * uLCol[j];
+          color += specular.rgb * pow(max(0.,dot(R,-W)),specular.a) * uLCol[j];
+       }
+    }
+    return color;
+ }
+
+ // I VARY THE SKY COLOR DEPENDING ON Y. FEEL FREE TO MAKE A DIFFERENT SKY PATTERN:
+
+ vec3 skyColor(float y) {
+    return mix(vec3(.1,.05,.07), vec3(.2,.3,.7), .5+.5*y);
+ }
+
+ // YOU MUST DEFINE A main() FUNCTION:
+
+ void main() {
+
+ ////////////////////////////////////////////////
+ //
+ // HERE, FOR YOUR HOMEWORK, YOU CAN WRITE ANY
+ // CODE YOU LIKDEFINE A COLOR FOR THIS FRAGMENT.
+
+    // POSITIONS AND RADII OF SPHERES:
+
+    Sph[0] = vec4(.5*sin(uTime),0.,.5*cos(uTime), 0.2);
+    Sph[1] = vec4(0.,0.,0., 0.2);
+
+    // SURFACE REFLECTANCE PROPERTIES:
+
+    Ambient [0] = vec3(.2,.1,.1);      // r,g,b
+    Diffuse [0] = vec3(1.,.5,.5);      // r,g,b
+    Specular[0] = vec4(1.,1.,1., 10.); // r,g,b,power
+
+    Ambient [1] = vec3(.1,.1,.2);      // r,g,b
+    Diffuse [1] = vec3(.5,.5,1.);      // r,g,b
+    Specular[1] = vec4(1.,1.,1., 20.); // r,g,b,power
+
+    // INITIALIZE TO A BACKGROUND COLOR:
+
+    vec3 color = skyColor(vPos.y);
+
+    // COMPUTE THE RAY ORIGIN AND DIRECTION:
+
+    float x = vPos.x;
+    float y = vPos.y;
+
+    vec3 V = vec3(0.,0.,fl);
+    vec3 W = normalize(vec3(x, y, -fl));
+
+    // RAY TRACE TO ALL OBJECTS IN THE SCENE:
+
+    float tMin = 10000.0;
+    for (int i = 0 ; i < ns ; i++) {
+
+       // IF RAY HITS SPHERE
+
+       float t = raySphere(Sph[i], V, W);
+
+       if (t > 0. && t < tMin) {
+
+          // FIND SURFACE POINT AND NORMAL, THEN DO SHADING:
+
+          vec3 S = V + t * W;
+          vec3 N = normalize(S - Sph[i].xyz);
+          color = shadeSphere(S, N, W, Ambient[i], Diffuse[i], Specular[i]);
+
+	  /////////////////////////////////////////////////////////////////////
+	  //
+	  // DO REFRACTION THROUGH TRANSPARENT SPHERE:
+          //
+	  // Compute refracted ray direction into front of sphere.
+	  // Shoot ray from front of sphere toward rear of sphere.
+	  // Compute surface point and normal at rear of sphere.
+	  // Compute emergent ray direction out of rear of sphere.
+          // Loop through all spheres:
+          //    Shoot emergent ray toward other sphere
+          //    If ray hits other sphere and this is the nearest hit so far:
+          //       compute other sphere surface point and normal.
+          //       shade other sphere to compute refraction color.
+          // If emergent ray has hit any sphere:
+          //    mix refraction color into color.
+          //
+	  // HINT: To compute the outgoing refracted ray direction when
+	  // going from a medium with refractive index n1 to refract index n2,
+	  // when the incoming ray is W, and the surface normal is N:
+          //
+	  // (1) Compute the component of W that is perpendicular to N.
+	  // (2) Scale that component vector by n1/n2.
+	  // (3) Use that result to build a new outgoing unit length ray.
+	  //
+	  /////////////////////////////////////////////////////////////////////
+ 
+
+	  /////////////////////////////////////////////////////////////////////
+	  //
+	  // DO MIRROR REFLECTION:
+          //
+          // Compute mirror ray direction by reflecting -W around N.
+          // Loop through all spheres:
+          //    Shoot ray toward other sphere
+          //    If ray hits other sphere and this is the nearest hit so far:
+          //       compute other sphere surface point and normal.
+          //       shade other sphere to compute mirror color.
+          // If mirror ray has hit any sphere:
+          //    mix mirror color into color.
+	  //
+	  /////////////////////////////////////////////////////////////////////
+
+
+          tMin = t;
+       }
+    }
+
+    // APPLY GAMMA CORRECTION AND SET THE PIXEL COLOR:
+
+    gl_FragColor = vec4(sqrt(color), 1.0);
+ }
+</script>
+
+
+<!!-------- CREATE A PROPERLY DESCRIPTIVE TITLE BELOW -------->
+
+<script id='my_title' type='text/html'>
+RAY TRACING TO SPHERES
+</script>
+
+
+<!!-------- HERE IS WHERE YOU CAN PROVIDE A LONGER TEXT DESCRIPTION -------->
+
+<script id='my_instructions' type='text/html'><font color=#b0b0b0>
+We are implementing ray tracing<br>
+to multiple spheres with a single<br>
+light source and Phong shading.
+</script>
+
+
+<!!-------- YOU PROBABLY DON'T WANT TO CHANGE ANYTHING BELOW FOR NOW -------->
+   
+<script>
+
+// CREATE THE HTML DOCUMENT:
+
+let vs = my_vertex_shader.innerHTML,
+    fs = my_fragment_shader.innerHTML;
+    fs = fs.substring(1, fs.length);
+
+document.body.innerHTML = [''
+   ,'<center><font size=6 color=#b0b0b0>' + my_title.innerHTML + '</center>'
+   ,'<TABLE cellspacing=0 cellpadding=0><TR>'
+   ,'<td width=50></td><td><font color=red size=5><div id=errorMessage>&nbsp;</div></font></td>'
+   ,'</TR><TR>'
+   ,'<table cellspacing=10>'
+   ,'<tr>'
+   ,'<td valign=top><font size=2 color=red><div id=errorMarker>&nbsp;</div></font></td>'
+   ,'<td valign=top>'
+   ,'<textArea id=textArea spellcheck=false '
+   ,'style="font:16px courier;outline-width:0;border-style:none;resize:none;overflow:scroll;"'
+   ,'></textArea>'
+   ,'</td><td valign=top>' + document.body.innerHTML + '</td>'
+   ,'<td valign=top><font size=5>' + my_instructions.innerHTML + '</td>'
+   ,'</tr></table>'
+   ,'</TR></TABLE>'
+   ].join('');
+
+// SET UP THE EDITABLE TEXT AREA ON THE LEFT SIDE:
+
+let text = fs.split('\n'), cols = 0;
+for (let i = 0 ; i < text.length ; i++)
+   cols = Math.max(cols, text[i].length);
+
+textArea.rows = text.length;
+textArea.cols = cols;
+textArea.value = fs;
+textArea.style.backgroundColor = '#202020';
+textArea.style.color = 'white';
+
+// REPARSE THE SHADER PROGRAM AFTER EVERY KEYSTROKE:
+
+textArea.onkeyup = function() { canvas1.setShaders(vs, this.value); }
+
+// SET THE CURRENT TIME IN SECONDS BEFORE RENDERING EACH FRAME:
+
+let startTime = Date.now();
+
+let r3 = Math.sqrt(1/3);
+
+function animate(gl) {
+   let time = (Date.now() - startTime) / 1000;
+   setUniform('1f', 'uTime', time);
+
+   // SET DIRECTIONS AND COLORS OF THE LIGHT SOURCES:
+
+   setUniform('3fv', 'uLDir', [r3,r3,r3, -r3,-r3,-r3]);
+   setUniform('3fv', 'uLCol', [1,1,1, .2,0,0]);
+}
+
+// START EVERYTHING.
+
+gl_start(canvas1, vs, fs);
+</script>
+
