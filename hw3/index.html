@@ -168,8 +168,7 @@ void main() {
             vec3 N = normalize(S - uSph[i].xyz);
             color = shadeSphere(S, N, W, uAmbient[i], uDiffuse[i], uSpecular[i]);
 
-            
-
+            // reflection
             color = reflection(S, N, W, color);
 
             /////////////////////////////////////////////////////////////////////
@@ -206,7 +205,6 @@ void main() {
 
     gl_FragColor = vec4(sqrt(color), 1.0);
 }
-
 </script>
 
 
@@ -291,7 +289,8 @@ function animate(gl) {
     setUniform('4fv', 'uSpecular', [1., 1., 1., 10., 1., 1., 1., 20.]);
 
     // POSITIONS AND RADII OF SPHERES:
-    setUniform('4fv', 'uSph', [.5 * Math.sin(time),0.,.5 * Math.cos(time), 0.2, 0.,0.,0., 0.2]);
+    setUniform('4fv', 'uSph', [.3 * Math.sin(time), 0., .3 * Math.cos(time), 0.25,
+                               -.3 * Math.sin(time), 0., -.3 * Math.cos(time), 0.25]);
 }
 
 // START EVERYTHING.
