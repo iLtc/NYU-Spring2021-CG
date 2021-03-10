@@ -1,0 +1,303 @@
+<script src=lib4.js></script>
+
+<body bgcolor=black text=white link=white alink=white vlink=white>
+<center>
+<canvas id='canvas1' width=600 height=600></canvas>
+</center>
+</body>
+
+
+<!!-------- VERTEX SHADER: YOU PROBABLY DON'T WANT TO CHANGE THIS RIGHT NOW -------->
+
+<script id='my_vertex_shader' type='x-shader/x-vertex'>
+   uniform   float uTime;
+   uniform   mat4  uMatrix;
+   attribute vec3  aPos;
+   varying   vec3  vPos;
+   void main() {
+      gl_Position = uMatrix * vec4(aPos, 1.);
+      vPos = aPos;
+   }
+</script>
+
+
+<!!-------- FRAGMENT SHADER: THIS IS WHERE YOU WILL DO YOUR WORK -------->
+
+<script id='my_fragment_shader' type='x-shader/x-fragment'>
+
+ uniform float uTime;   // TIME, IN SECONDS
+
+ varying vec3 vPos;     // -1 < vPos.x < +1
+                        // -1 < vPos.y < +1
+                        //      vPos.z == 0
+
+ float fl = 3.0;
+
+ const int nl = 2; // NUMBER OF LIGHTS
+ const int ns = 2; // NUMBER OF SPHERES
+
+ uniform vec3 uLDir[nl];
+ uniform vec3 uLCol[nl];
+
+ uniform vec4 uSph[ns];
+
+ uniform vec3 uAmbient [ns];
+ uniform vec3 uDiffuse [ns];
+ uniform vec4 uSpecular[ns];
+
+ float raySphere(vec4 Sph, vec3 V, vec3 W) {
+    V -= Sph.xyz;
+    float B = dot(W, V);
+    float C = dot(V, V) - Sph.w * Sph.w;
+    float D = B*B - C;
+    return D > 0. ? -B - sqrt(D) : -1.;
+ }
+
+ vec3 shadeSphere(vec3 S, vec3 N, vec3 ambient, vec3 diffuse, vec4 specular, vec3 W) {
+    vec3 color = ambient;
+    for (int j = 0 ; j < nl ; j++) {
+
+       // IF NOT IN SHADOW, DO SHADING.
+
+       float t = -1.;
+       for (int k = 0 ; k < ns ; k++)
+          t = max(t, raySphere(uSph[k], S, uLDir[j]));
+
+       if (t < 0.) {
+          vec3 R = 2. * dot(uLDir[j], N) * N - uLDir[j];
+          color += diffuse * max(0.,dot(N,uLDir[j])) * uLCol[j];
+          color += specular.rgb * pow(max(0.,dot(R,-W)),specular.a) * uLCol[j];
+       }
+    }
+    return color;
+ }
+
+ vec3 skyColor(float y) {
+    return mix(vec3(.1,.05,.07), vec3(.2,.3,.7), .5+.5*y);
+ }
+
+ // YOU MUST DEFINE A main() FUNCTION.
+
+ void main() {
+
+    // INITIALIZE TO A BACKGROUND COLOR
+
+    vec3 color = skyColor(vPos.y);
+
+    // COMPUTE THE RAY ORIGIN AND DIRECTION
+
+    vec3 V = vec3(0.,0.,fl);
+    vec3 W = normalize(vec3(vPos.xy, -fl));
+
+    // RAY TRACE TO ALL OBJECTS IN THE SCENE
+
+    float tMin = 10000.0;
+    for (int i = 0 ; i < ns ; i++) {
+
+       // IF RAY HITS SPHERE: FIND SURFACE POINT AND NORMAL, DO SHADING
+
+       float t = raySphere(uSph[i], V, W);
+       if (t > 0. && t < tMin) {
+          vec3 S = V + t * W;
+          vec3 N = normalize(S - uSph[i].xyz);
+          color = shadeSphere(S, N, uAmbient[i], uDiffuse[i], uSpecular[i], W);
+          tMin = t;
+       }
+    }
+
+    // APPLY GAMMA CORRECTION AND SET THE PIXEL COLOR.
+
+    gl_FragColor = vec4(sqrt(color), 1.0);
+ }
+</script>
+
+
+<!!-------- CREATE A PROPERLY DESCRIPTIVE TITLE BELOW -------->
+
+<script id='my_title' type='text/html'>
+TRANSFORM SQUARE WITH RAY TRACED PROCEDURAL TEXTURE
+</script>
+
+
+<!!-------- HERE IS WHERE YOU CAN PROVIDE A LONGER TEXT DESCRIPTION -------->
+
+<script id='my_instructions' type='text/html'><font color=#b0b0b0>
+Transform a square over time, with<br>
+a procedural texture on the square<br>
+which is a ray traced scene.<br>
+</script>
+
+
+<!!-------- YOU PROBABLY DON'T WANT TO CHANGE ANYTHING BELOW FOR NOW -------->
+   
+<script>
+
+// CREATE THE HTML DOCUMENT
+
+let vs = my_vertex_shader.innerHTML,
+    fs = my_fragment_shader.innerHTML;
+    fs = fs.substring(1, fs.length);
+
+document.body.innerHTML = [''
+   ,'<center><font size=6 color=#b0b0b0>' + my_title.innerHTML + '</center>'
+   ,'<TABLE cellspacing=0 cellpadding=0><TR>'
+   ,'<td width=50></td><td><font color=red size=5><div id=errorMessage>&nbsp;</div></font></td>'
+   ,'</TR><TR>'
+   ,'<table cellspacing=10>'
+   ,'<tr>'
+   ,'<td valign=top><font size=2 color=red><div id=errorMarker>&nbsp;</div></font></td>'
+   ,'<td valign=top>'
+   ,'<textArea id=textArea spellcheck=false '
+   ,'style="font:16px courier;outline-width:0;border-style:none;resize:none;overflow:scroll;"'
+   ,'></textArea>'
+   ,'</td><td valign=top>' + document.body.innerHTML + '</td>'
+   ,'<td valign=top><font size=5>' + my_instructions.innerHTML + '</td>'
+   ,'</tr></table>'
+   ,'</TR></TABLE>'
+   ].join('');
+
+// SET UP THE EDITABLE TEXT AREA ON THE LEFT SIDE.
+
+let text = fs.split('\n'), cols = 0;
+for (let i = 0 ; i < text.length ; i++)
+   cols = Math.max(cols, text[i].length);
+
+textArea.rows = text.length;
+textArea.cols = cols;
+textArea.value = fs;
+textArea.style.backgroundColor = '#202020';
+textArea.style.color = 'white';
+
+// REPARSE THE SHADER PROGRAM AFTER EVERY KEYSTROKE.
+
+textArea.onkeyup = function() { canvas1.setShaders(vs, this.value); }
+
+let startTime = Date.now();
+
+let r3 = Math.sqrt(1/3);
+
+
+//---------- DEFINE MATRIX PRIMITIVE OPERATIONS ------------
+
+
+// I HAVE IMPLEMENTED THESE FUNCTIONS FOR YOU
+
+let matrix_identity = () => {
+   return [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1];
+}
+
+let matrix_translate = (x,y,z) => {
+   let m = matrix_identity();
+   m[12] = x;
+   m[13] = y;
+   m[14] = z;
+   return m;
+}
+
+// YOU NEED TO PROPERLY IMPLEMENT THE FOLLOWING FIVE FUNCTIONS:
+
+let matrix_rotateX  = theta   => {
+    let m = matrix_identity();
+
+    m[5] = Math.cos(theta);
+    m[6] = Math.sin(theta);
+    m[9] = -Math.sin(theta);
+    m[10] = Math.cos(theta);
+
+    return m;
+}
+
+let matrix_rotateY  = theta   => {
+    let m = matrix_identity();
+
+    m[0] = Math.cos(theta);
+    m[2] = -Math.sin(theta);
+    m[8] = Math.sin(theta);
+    m[10] = Math.cos(theta);
+
+    return m;
+}
+
+let matrix_rotateZ  = theta   => {
+    let m = matrix_identity();
+
+    m[0] = Math.cos(theta);
+    m[1] = Math.sin(theta);
+    m[4] = -Math.sin(theta);
+    m[5] = Math.cos(theta);
+
+    return m;
+}
+
+let matrix_scale    = (x,y,z) => {
+    let m = matrix_identity();
+
+    m[0] = x;
+    m[5] = y;
+    m[10] = z;
+
+    return m;
+}
+
+let matrix_multiply = (a,b)   => {
+    let m = matrix_identity();
+
+    for (let i = 0; i < 4; i ++) {
+        for (let j = 0; j < 4; j ++) {
+            let sum = 0;
+
+            for (let k = 0; k < 4; k ++) {
+                sum += a[k * 4 + j] * b[i * 4 + k];
+            }
+
+            m[i * 4 + j] = sum;
+        }
+    }
+
+    return m;
+}
+
+//----------- ANIMATE EACH FRAME --------------
+
+function animate(gl) {
+
+   // SET TIME IN RAYTRACED SCENE
+
+   let time = (Date.now() - startTime) / 1000;
+   setUniform('1f', 'uTime', time);
+
+   // SET LIGHT POSITION AND COLOR IN RAYTRACED SCENE
+
+   setUniform('3fv', 'uLDir', [r3,r3,r3, -r3,-r3,-r3]);
+   setUniform('3fv', 'uLCol', [1,1,1, .2,0,0]);
+   setUniform('3fv', 'uLCol', [1,1,1, .2,0,0]);
+
+   // SET SPHERE GEOMETRY IN RAYTRACED SCENE
+
+   setUniform('4fv', 'uSph', [
+      .5*Math.sin(time),0,.5*Math.cos(time), .2,
+      0,0,0,.2]);
+
+   // SET SURFACE REFLECTANCE PROPERTIES IN RAYTRACED SCENE
+
+   setUniform('3fv', 'uAmbient' , [.2,.1,.2, .1,.1,.2]);
+   setUniform('3fv', 'uDiffuse' , [1,.5,.5, .5,.5,1]);
+   setUniform('4fv', 'uSpecular', [1,1,1,10, 1,1,1,20]);
+
+   // DO A SEQUENCE OF MATRIX TRANSFORMATIONS TO ANIMATE THE SQUARE.
+   // FEEL FREE TO CHANGE THE FOLLOWING TO YOUR OWN SEQUENCE.
+
+   let m = matrix_identity();
+   m = matrix_multiply(matrix_translate(.3 * Math.sin(time),0,0), m);
+   m = matrix_multiply(matrix_rotateX(time)                     , m);
+
+   // SEND m TO THE VERTEX SHADER TO TRANSFORM THE SQUARE'S VERTICES.
+
+   setUniform('Matrix4fv', 'uMatrix', false, m);
+}
+
+// START EVERYTHING.
+
+gl_start(canvas1, vs, fs);
+</script>
+
