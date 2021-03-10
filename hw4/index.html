@@ -288,8 +288,8 @@ function animate(gl) {
    // FEEL FREE TO CHANGE THE FOLLOWING TO YOUR OWN SEQUENCE.
 
    let m = matrix_identity();
-   m = matrix_multiply(matrix_translate(.3 * Math.sin(time),0,0), m);
-   m = matrix_multiply(matrix_rotateX(time)                     , m);
+   m = matrix_multiply(matrix_translate(.5 * Math.sin(time),0,0),                                                m);
+   m = matrix_multiply(matrix_scale(.9 * Math.abs(Math.sin(time)) + .1, .9 * Math.abs(Math.sin(time)) + .1, .5), m);
 
    // SEND m TO THE VERTEX SHADER TO TRANSFORM THE SQUARE'S VERTICES.
 
