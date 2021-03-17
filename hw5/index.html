@@ -1,0 +1,449 @@
+<script src=lib5.js></script>
+
+<body bgcolor=black text=white link=white alink=white vlink=white>
+<center>
+<canvas id='canvas1' width=600 height=600></canvas>
+</center>
+</body>
+
+
+<!!-------- VERTEX SHADER -------->
+
+<script id='my_vertex_shader' type='x-shader/x-vertex'>
+   uniform   float uTime;
+   uniform   mat4  uMatrix;
+   attribute vec3  aPos;
+   varying   vec3  vPos;
+   void main() {
+      vec4 pos = uMatrix * vec4(aPos, 1.);
+      gl_Position = pos * vec4(1.,1.,-1.,1.);
+      vPos = aPos;
+   }
+</script>
+
+
+<!!-------- FRAGMENT SHADER -------->
+
+<script id='my_fragment_shader' type='x-shader/x-fragment'>
+
+ uniform float uTime;   // TIME, IN SECONDS
+
+ varying vec3 vPos;     // -1 < vPos.x < +1
+                        // -1 < vPos.y < +1
+                        //      vPos.z == 0
+
+ float fl = 3.0;
+
+ const int nl = 2; // NUMBER OF LIGHTS
+ const int ns = 2; // NUMBER OF SPHERES
+
+ uniform vec3 uLDir[nl];
+ uniform vec3 uLCol[nl];
+
+ uniform vec4 uSph[ns];
+
+ uniform vec3 uAmbient [ns];
+ uniform vec3 uDiffuse [ns];
+ uniform vec4 uSpecular[ns];
+
+ uniform vec3 uBackground[2];
+
+ float raySphere(vec4 Sph, vec3 V, vec3 W) {
+    V -= Sph.xyz;
+    float B = dot(W, V);
+    float C = dot(V, V) - Sph.w * Sph.w;
+    float D = B*B - C;
+    return D > 0. ? -B - sqrt(D) : -1.;
+ }
+
+ vec3 shadeSphere(vec3 S, vec3 N, vec3 ambient, vec3 diffuse, vec4 specular, vec3 W) {
+    vec3 color = ambient;
+    for (int j = 0 ; j < nl ; j++) {
+
+       // IF NOT IN SHADOW, DO SHADING.
+
+       float t = -1.;
+       for (int k = 0 ; k < ns ; k++)
+          t = max(t, raySphere(uSph[k], S, uLDir[j]));
+
+       if (t < 0.) {
+          vec3 R = 2. * dot(uLDir[j], N) * N - uLDir[j];
+          color += diffuse * max(0.,dot(N,uLDir[j])) * uLCol[j];
+          color += specular.rgb * pow(max(0.,dot(R,-W)),specular.a) * uLCol[j];
+       }
+    }
+    return color;
+ }
+
+ vec3 skyColor(float y) {
+    return mix(uBackground[0], uBackground[1], .5+.5*y);
+ }
+
+ // YOU MUST DEFINE A main() FUNCTION.
+
+ void main() {
+
+    // INITIALIZE TO A BACKGROUND COLOR
+
+    vec3 color = skyColor(vPos.y);
+
+    // COMPUTE THE RAY ORIGIN AND DIRECTION
+
+    vec3 V = vec3(0.,0.,fl);
+    vec3 W = normalize(vec3(vPos.xy, -fl));
+
+    // RAY TRACE TO ALL OBJECTS IN THE SCENE
+
+    float tMin = 10000.0;
+    for (int i = 0 ; i < ns ; i++) {
+
+       // IF RAY HITS SPHERE: FIND SURFACE POINT AND NORMAL, DO SHADING
+
+       float t = raySphere(uSph[i], V, W);
+       if (t > 0. && t < tMin) {
+          vec3 S = V + t * W;
+          vec3 N = normalize(S - uSph[i].xyz);
+          color = shadeSphere(S, N, uAmbient[i], uDiffuse[i], uSpecular[i], W);
+          tMin = t;
+       }
+    }
+
+    // APPLY GAMMA CORRECTION AND SET THE PIXEL COLOR.
+
+    gl_FragColor = vec4(sqrt(color), 1.0);
+ }
+</script>
+
+
+<!!-------- A PROPERLY DESCRIPTIVE TITLE -------->
+
+<script id='my_title' type='text/html'>
+FIRST EXAMPLES OF ANIMATED MESH SHAPES
+</script>
+
+
+<!!-------- HERE IS WHERE YOU CAN PROVIDE A LONGER TEXT DESCRIPTION -------->
+
+<script id='my_instructions' type='text/html'><font color=#b0b0b0>
+Matrix class for transformation.<br>
+Triangle meshes for spheres, tubes, etc.
+</script>
+
+
+<!!-------- GENERAL SUPPORT CODE -------->
+   
+<script>
+
+// CREATE THE HTML DOCUMENT
+
+let vs = my_vertex_shader.innerHTML,
+    fs = my_fragment_shader.innerHTML;
+    fs = fs.substring(1, fs.length);
+
+document.body.innerHTML = [''
+   ,'<center><font size=6 color=#b0b0b0>' + my_title.innerHTML + '</center>'
+   ,'<TABLE cellspacing=0 cellpadding=0><TR>'
+   ,'<td width=50></td><td><font color=red size=5><div id=errorMessage>&nbsp;</div></font></td>'
+   ,'</TR><TR>'
+   ,'<table cellspacing=10>'
+   ,'<tr>'
+   ,'<td valign=top><font size=2 color=red><div id=errorMarker>&nbsp;</div></font></td>'
+   ,'<td valign=top>'
+   ,'<textArea id=textArea spellcheck=false '
+   ,'style="font:16px courier;outline-width:0;border-style:none;resize:none;overflow:scroll;"'
+   ,'></textArea>'
+   ,'</td><td valign=top>' + document.body.innerHTML + '</td>'
+   ,'<td valign=top><font size=5>' + my_instructions.innerHTML + '</td>'
+   ,'</tr></table>'
+   ,'</TR></TABLE>'
+   ].join('');
+
+// SET UP THE EDITABLE TEXT AREA ON THE LEFT SIDE.
+
+let text = fs.split('\n'), cols = 0;
+for (let i = 0 ; i < text.length ; i++)
+   cols = Math.max(cols, text[i].length);
+
+textArea.rows = text.length;
+textArea.cols = cols;
+textArea.value = fs;
+textArea.style.backgroundColor = '#202020';
+textArea.style.color = 'white';
+
+// REPARSE THE SHADER PROGRAM AFTER EVERY KEYSTROKE.
+
+textArea.onkeyup = function() { canvas1.setShaders(vs, this.value); }
+
+let startTime = Date.now();
+
+let r3 = Math.sqrt(1/3);
+
+
+//---------- PRIMITIVE MATRIX PRIMITIVE OPERATIONS ------------
+
+//  0  4  8 12
+//  1  5  9 13
+//  2  6 10 14
+//  3  7 11 15
+
+let matrix_identity = () => {
+   return [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1];
+}
+
+let matrix_translate = (x,y,z) => {
+   let m = matrix_identity();
+   m[12] = x;
+   m[13] = y;
+   m[14] = z;
+   return m;
+}
+
+let matrix_rotateX  = theta   => {
+   let m = matrix_identity();
+   m[ 5] =  Math.cos(theta);
+   m[ 6] =  Math.sin(theta);
+   m[ 9] = -Math.sin(theta);
+   m[10] =  Math.cos(theta);
+   return m;
+}
+let matrix_rotateY  = theta   => {
+   let m = matrix_identity();
+   m[10] =  Math.cos(theta);
+   m[ 8] =  Math.sin(theta);
+   m[ 2] = -Math.sin(theta);
+   m[ 0] =  Math.cos(theta);
+   return m;
+}
+let matrix_rotateZ  = theta   => {
+   let m = matrix_identity();
+   m[ 0] =  Math.cos(theta);
+   m[ 1] =  Math.sin(theta);
+   m[ 4] = -Math.sin(theta);
+   m[ 5] =  Math.cos(theta);
+   return m;
+}
+let matrix_scale    = (x,y,z) => {
+   if (y === undefined)
+      y = z = x;
+   let m = matrix_identity();
+   m[ 0] = x;
+   m[ 5] = y;
+   m[10] = z;
+   return m;
+}
+let matrix_multiply = (a,b)   => {
+   let m = [];
+   for (let col = 0 ; col < 4 ; col++)
+   for (let row = 0 ; row < 4 ; row++) {
+      let value = 0;
+      for (let i = 0 ; i < 4 ; i++)
+         value += a[4*i + row] * b[4*col + i];
+      m.push(value);
+   }
+   return m;
+}
+
+//---------- MATRIX OBJECT CLASS ------------
+
+let Matrix = function() {
+   let top = 0, m = [ matrix_identity() ];
+   this.identity = () => m[top] = matrix_identity();
+   this.translate = (x,y,z) => m[top] = matrix_multiply(m[top], matrix_translate(x,y,z));
+   this.rotateX = theta     => m[top] = matrix_multiply(m[top], matrix_rotateX(theta));
+   this.rotateY = theta     => m[top] = matrix_multiply(m[top], matrix_rotateY(theta));
+   this.rotateZ = theta     => m[top] = matrix_multiply(m[top], matrix_rotateZ(theta));
+   this.scale   = (x,y,z)   => m[top] = matrix_multiply(m[top], matrix_scale(x,y,z));
+   this.value   = ()        => m[top];
+   this.save    = ()        => { m[top+1] = m[top].slice(); top++; }
+   this.restore = ()        => --top;
+}
+
+
+//------ CREATING MESH SHAPES
+
+// CREATE A MESH FROM A PARAMETRIC FUNCTION
+
+let createMesh = (nu, nv, f, data) => {
+   let tmp = [];
+   for (let v = 0 ; v < 1 ; v += 1/nv) {
+      for (let u = 0 ; u <= 1 ; u += 1/nu) {
+         tmp = tmp.concat(f(u,v,data));
+         tmp = tmp.concat(f(u,v+1/nv,data));
+      }
+      tmp = tmp.concat(f(1,v,data));
+      tmp = tmp.concat(f(0,v+1/nv,data));
+   }
+   return new Float32Array(tmp);
+}
+
+// GLUE TWO MESHES TOGETHER INTO A SINGLE MESH
+
+let glueMeshes = (a, b) => {
+   let c = [];
+   for (let i = 0 ; i < a.length ; i++)
+      c.push(a[i]);                           // a
+   for (let i = 0 ; i < VERTEX_SIZE ; i++)
+      c.push(a[a.length - VERTEX_SIZE + i]);  // + last vertex of a
+   for (let i = 0 ; i < VERTEX_SIZE ; i++)
+      c.push(b[i]);                           // + first vertex of b
+   for (let i = 0 ; i < b.length ; i++)
+      c.push(b[i]);                           // + b
+   return new Float32Array(c);
+}
+
+let squareMeshFaceX = (isPositive) => {
+    let x = isPositive ? 1 : -1;
+    return new Float32Array([ x,-1,1, x,1,1, x,-1,-1, x,1,-1 ]);
+}
+
+let squareMeshFaceY = (isPositive) => {
+    let y = isPositive ? 1 : -1;
+    return new Float32Array([ 1,y,-1, 1,y,1, -1,y,-1, -1,y,1 ]);
+}
+
+let squareMeshFaceZ = (isPositive) => {
+    let z = isPositive ? 1 : -1;
+    return new Float32Array([ 1,1,z, 1,-1,z, -1,1,z, -1,-1,z ]);
+}
+
+let squareMesh = new Float32Array([ -1,1,0, 1,1,0, -1,-1,0, 1,-1,0 ]);
+
+let uvToSphere = (u,v) => {
+   let theta = 2 * Math.PI * u;
+   let phi   = Math.PI * (v - .5);
+   let x = Math.cos(theta) * Math.cos(phi);
+   let y = Math.sin(theta) * Math.cos(phi);
+   let z = Math.sin(phi);
+   return [x,y,z];
+}
+
+let uvToTube = (u,v) => {
+   let theta = 2 * Math.PI * u;
+   let x = Math.cos(theta);
+   let y = Math.sin(theta);
+   let z = 2 * v - 1;
+   return [x,y,z];
+}
+
+let uvToDisk = (u,v,dz) => {
+   if (dz === undefined)
+      dz = 0;
+   let theta = 2 * Math.PI * u;
+   let x = Math.cos(theta) * v;
+   let y = Math.sin(theta) * v;
+   let z = dz;
+   return [x,y,z];
+}
+
+let uvToTorus = (u, v, r) => {
+    let theta = 2 * Math.PI * u;
+    let phi   = 2 * Math.PI * v;
+    let x     = Math.cos(theta) * (1 + r * Math.cos(phi));
+    let y     = Math.sin(theta) * (1 + r * Math.cos(phi));
+    let z     = r * Math.sin(phi);
+
+    return [x, y, z];
+}
+
+let sphereMesh   = createMesh(32, 16, uvToSphere);
+let tubeMesh     = createMesh(32, 2, uvToTube);
+let diskMesh     = createMesh(32, 2, uvToDisk);
+let diskNMesh    = createMesh(32, 2, uvToDisk, -1);
+let diskPMesh    = createMesh(32, 2, uvToDisk,  1);
+let cylinderMesh = glueMeshes(glueMeshes(tubeMesh, diskPMesh), diskNMesh);
+
+let cubeMeshX    = glueMeshes(squareMeshFaceX(true), squareMeshFaceX(false));
+let cubeMeshY    = glueMeshes(squareMeshFaceY(true), squareMeshFaceY(false));
+let cubeMeshZ    = glueMeshes(squareMeshFaceZ(true), squareMeshFaceZ(false));
+let cubeMesh     = glueMeshes(glueMeshes(cubeMeshX, cubeMeshY), cubeMeshZ);
+
+let torusMesh    = createMesh(32, 16, uvToTorus,  0.5);
+
+
+//----------- ANIMATE EACH FRAME --------------
+
+function animate(gl) {
+
+   // SET ANIMATION TIME
+
+   let time = (Date.now() - startTime) / 1000;
+   setUniform('1f', 'uTime', time);
+
+   // SET LIGHT POSITION AND COLOR FOR RAYTRACING
+
+   setUniform('3fv', 'uLDir', [r3,r3,r3, -r3,-r3,-r3]);
+   setUniform('3fv', 'uLCol', [1,1,1, .2,0,0]);
+   setUniform('3fv', 'uLCol', [1,1,1, .2,0,0]);
+
+   // SET SPHERE GEOMETRY FOR RAYTRACING
+
+   setUniform('4fv', 'uSph', [
+      .5*Math.sin(time),0,.5*Math.cos(time), .2,
+      0,0,0,.2]);
+
+   // SET SURFACE REFLECTANCE PROPERTIES FOR RAYTRACING
+
+   setUniform('3fv', 'uAmbient' , [.2,.1,.2, .1,.1,.2]);
+   setUniform('3fv', 'uDiffuse' , [1,.5,.5, .5,.5,1]);
+   setUniform('4fv', 'uSpecular', [1,1,1,10, 1,1,1,20]);
+
+   // REPLACE THE BELOW BY A SCENE OF YOUR CHOICE
+/*
+   M.save();
+      M.translate(0,.3,0);
+      M.rotateZ(Math.cos(time));            // SHOULDER
+      M.translate(0,-.3,0);
+
+      M.save();
+         M.scale(.1,.3,.1);
+         drawMesh(sphereMesh, M.value());   // UPPER ARM
+      M.restore();
+
+      M.translate(0,-.3,0);
+      M.rotateZ(Math.sin(time));            // ELBOW
+      M.translate(0,-.3,0);
+
+      M.save();
+         M.scale(.1,.3,.1);
+         drawMesh(sphereMesh, M.value());   // LOWER ARM
+      M.restore();
+   M.restore();
+*/
+    M.save();
+        M.translate(-.5, 0, 0);
+        M.rotateX(time);
+        M.rotateY(time);
+        M.rotateZ(time);
+        M.scale(.3);
+        setUniform('3fv', 'uBackground', [.1,.05,.07, .2,.3,.7]);
+        drawMesh(cubeMesh, M.value());
+    M.restore();
+
+    M.save();
+        M.translate(.5, 0, 0);
+        M.rotateX(time);
+        M.rotateY(time);
+        M.rotateZ(time);
+        M.scale(.3);
+        setUniform('3fv', 'uBackground', [.94,.27,.09, .99,.61,.14]);
+        drawMesh(sphereMesh, M.value());
+    M.restore();
+
+    M.save();
+        M.rotateX(time);
+        M.rotateY(time);
+        M.rotateZ(time);
+        M.scale(.3);
+        drawMesh(torusMesh, M.value());
+    M.restore();
+}
+
+// CREATE THE MATRIX OBJECT
+
+let M = new Matrix();
+
+// START EVERYTHING.
+
+gl_start(canvas1, vs, fs);
+</script>
+
