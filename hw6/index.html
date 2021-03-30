@@ -1,0 +1,432 @@
+<script src=lib6.js></script>
+
+<body bgcolor=black text=white link=white alink=white vlink=white>
+<center>
+<canvas id='canvas1' width=600 height=600></canvas>
+</center>
+</body>
+
+
+<!!-------- VERTEX SHADER -------->
+
+<script id='my_vertex_shader' type='x-shader/x-vertex'>
+   uniform   float uTime;
+   uniform   mat4  uMatrix, uInvMatrix, uCamera;
+   attribute vec3  aPos;
+   attribute vec3  aNor;
+   varying   vec3  vPos;
+   varying   vec3  vNor;
+   void main() {
+
+      // CAMERA MATRIX IS APPLIED AFTER ALL OTHER TRANSFORMATIONS.
+      // THAT IS WHY IT MULTIPLIES FROM THE LEFT.
+
+      vec4 pos = uCamera * uMatrix * vec4(aPos, 1.);
+
+      // NORMAL IS RIGHT-MULTIPLIED BY INVERSE OF MATRIX.
+
+      vec4 nor = vec4(aNor, 0.) * uInvMatrix;
+      gl_Position = pos;
+      vPos = pos.xyz;
+      vNor = nor.xyz;
+   }
+</script>
+
+
+<!!-------- FRAGMENT SHADER -------->
+
+<script id='my_fragment_shader' type='x-shader/x-fragment'>
+
+ uniform float uTime;   // TIME, IN SECONDS
+
+ varying vec3 vPos;
+ varying vec3 vNor;
+
+ float fl = 3.0;
+
+ const int nl = 2; // NUMBER OF LIGHTS
+ const int ns = 2; // NUMBER OF SPHERES
+
+ uniform vec3 uLDir[nl];
+ uniform vec3 uLCol[nl];
+
+ uniform vec4 uSph[ns];
+
+ uniform vec3 uAmbient [ns];
+ uniform vec3 uDiffuse [ns];
+ uniform vec4 uSpecular[ns];
+
+ void main() {
+    vec3 N = normalize(vNor);
+
+    // WE DO PHONG SHADING HERE ONLY FOR MATERIAL 0.
+
+    vec3 color = uAmbient[0];
+    for (int n = 0 ; n < nl ; n++) {
+       vec3 R = 2. * dot(uLDir[n], N) * N - uLDir[n];
+       color += uLCol[n] * (
+                 uDiffuse[0] * max(0., dot(uLDir[n], N))
+               + uSpecular[0].rgb * pow(max(0., R.z), uSpecular[0].w)
+       );
+    }
+    gl_FragColor = vec4(sqrt(color), 1.0);
+ }
+</script>
+
+
+<!!-------- A PROPERLY DESCRIPTIVE TITLE -------->
+
+<script id='my_title' type='text/html'>
+FIRST EXAMPLES OF ANIMATED MESH SHAPES
+</script>
+
+
+<!!-------- HERE IS WHERE YOU CAN PROVIDE A LONGER TEXT DESCRIPTION -------->
+
+<script id='my_instructions' type='text/html'><font color=#b0b0b0>
+Matrix class for transformation.<br>
+Triangle meshes for spheres, tubes, etc.
+</script>
+
+
+<!!-------- GENERAL SUPPORT CODE -------->
+   
+<script>
+
+// CREATE THE HTML DOCUMENT
+
+let vs = my_vertex_shader.innerHTML,
+    fs = my_fragment_shader.innerHTML;
+    fs = fs.substring(1, fs.length);
+
+document.body.innerHTML = [''
+   ,'<center><font size=6 color=#b0b0b0>' + my_title.innerHTML + '</center>'
+   ,'<TABLE cellspacing=0 cellpadding=0><TR>'
+   ,'<td width=50></td><td><font color=red size=5><div id=errorMessage>&nbsp;</div></font></td>'
+   ,'</TR><TR>'
+   ,'<table cellspacing=10>'
+   ,'<tr>'
+   ,'<td valign=top><font size=2 color=red><div id=errorMarker>&nbsp;</div></font></td>'
+   ,'<td valign=top>'
+   ,'<textArea id=textArea spellcheck=false '
+   ,'style="font:16px courier;outline-width:0;border-style:none;resize:none;overflow:scroll;"'
+   ,'></textArea>'
+   ,'</td><td valign=top>' + document.body.innerHTML + '</td>'
+   ,'<td valign=top><font size=5>' + my_instructions.innerHTML + '</td>'
+   ,'</tr></table>'
+   ,'</TR></TABLE>'
+   ].join('');
+
+// SET UP THE EDITABLE TEXT AREA ON THE LEFT SIDE.
+
+let text = fs.split('\n'), cols = 0;
+for (let i = 0 ; i < text.length ; i++)
+   cols = Math.max(cols, text[i].length);
+
+textArea.rows = text.length;
+textArea.cols = cols;
+textArea.value = fs;
+textArea.style.backgroundColor = '#202020';
+textArea.style.color = 'white';
+
+// REPARSE THE SHADER PROGRAM AFTER EVERY KEYSTROKE.
+
+textArea.onkeyup = function() { canvas1.setShaders(vs, this.value); }
+
+let startTime = Date.now();
+
+let r3 = Math.sqrt(1/3);
+
+
+//---------- PRIMITIVE MATRIX PRIMITIVE OPERATIONS ------------
+
+// MATRIX INDEXING IS COLUMN MAJOR:
+//
+//  0  4  8 12
+//  1  5  9 13
+//  2  6 10 14
+//  3  7 11 15
+
+let matrix_identity = () => {
+   return [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1];
+}
+
+let matrix_translate = (x,y,z) => {
+   let m = matrix_identity();
+   m[12] = x;
+   m[13] = y;
+   m[14] = z;
+   return m;
+}
+
+let matrix_rotateX  = theta   => {
+   let m = matrix_identity();
+   m[ 5] =  Math.cos(theta);
+   m[ 6] =  Math.sin(theta);
+   m[ 9] = -Math.sin(theta);
+   m[10] =  Math.cos(theta);
+   return m;
+}
+let matrix_rotateY  = theta   => {
+   let m = matrix_identity();
+   m[10] =  Math.cos(theta);
+   m[ 8] =  Math.sin(theta);
+   m[ 2] = -Math.sin(theta);
+   m[ 0] =  Math.cos(theta);
+   return m;
+}
+let matrix_rotateZ  = theta   => {
+   let m = matrix_identity();
+   m[ 0] =  Math.cos(theta);
+   m[ 1] =  Math.sin(theta);
+   m[ 4] = -Math.sin(theta);
+   m[ 5] =  Math.cos(theta);
+   return m;
+}
+let matrix_scale    = (x,y,z) => {
+   if (y === undefined)
+      y = z = x;
+   let m = matrix_identity();
+   m[ 0] = x;
+   m[ 5] = y;
+   m[10] = z;
+   return m;
+}
+let matrix_multiply = (a,b)   => {
+   let m = [];
+   for (let col = 0 ; col < 4 ; col++)
+   for (let row = 0 ; row < 4 ; row++) {
+      let value = 0;
+      for (let i = 0 ; i < 4 ; i++)
+         value += a[4*i + row] * b[4*col + i];
+      m.push(value);
+   }
+   return m;
+}
+
+// HERE I HAVE ADDED IMPLEMENTATIONS FOR MATRIX INVERSE AND MATRIX PERSPECTIVE.
+
+let matrix_inverse = src => {
+  let dst = [], det = 0, cofactor = (c, r) => {
+     let s = (i, j) => src[c+i & 3 | (r+j & 3) << 2];
+     return (c+r & 1 ? -1 : 1) * ( (s(1,1) * (s(2,2) * s(3,3) - s(3,2) * s(2,3)))
+                                 - (s(2,1) * (s(1,2) * s(3,3) - s(3,2) * s(1,3)))
+                                 + (s(3,1) * (s(1,2) * s(2,3) - s(2,2) * s(1,3))) );
+  }
+  for (let n = 0 ; n < 16 ; n++) dst.push(cofactor(n >> 2, n & 3));
+  for (let n = 0 ; n <  4 ; n++) det += src[n] * dst[n << 2];
+  for (let n = 0 ; n < 16 ; n++) dst[n] /= det;
+  return dst;
+}
+
+let matrix_perspective = fl => {
+  return [ 1,0,0,0, 0,1,0,0, 0,0,-1,-1/fl, 0,0,0,1 ];
+}
+
+
+//---------- MATRIX OBJECT CLASS ------------
+
+let Matrix = function() {
+   let top = 0, m = [ matrix_identity() ];
+   this.identity  = ()      => m[top] = matrix_identity();
+   this.translate = (x,y,z) => m[top] = matrix_multiply(m[top], matrix_translate(x,y,z));
+   this.rotateX   = theta   => m[top] = matrix_multiply(m[top], matrix_rotateX(theta));
+   this.rotateY   = theta   => m[top] = matrix_multiply(m[top], matrix_rotateY(theta));
+   this.rotateZ   = theta   => m[top] = matrix_multiply(m[top], matrix_rotateZ(theta));
+   this.scale     = (x,y,z) => m[top] = matrix_multiply(m[top], matrix_scale(x,y,z));
+   this.value     = ()      => m[top];
+   this.save      = ()      => { m[top+1] = m[top].slice(); top++; }
+   this.restore   = ()      => --top;
+}
+
+
+//------ CREATING MESH SHAPES
+
+// CREATE A MESH FROM A PARAMETRIC FUNCTION
+
+let createMesh = (nu, nv, f, data) => {
+   let tmp = [];
+   for (let v = 0 ; v < 1 ; v += 1/nv) {
+      for (let u = 0 ; u <= 1 ; u += 1/nu) {
+         tmp = tmp.concat(f(u,v,data));
+         tmp = tmp.concat(f(u,v+1/nv,data));
+      }
+      tmp = tmp.concat(f(1,v,data));
+      tmp = tmp.concat(f(0,v+1/nv,data));
+   }
+   return new Float32Array(tmp);
+}
+
+// GLUE TWO MESHES TOGETHER INTO A SINGLE MESH
+
+let glueMeshes = (a, b) => {
+   let c = [];
+   for (let i = 0 ; i < a.length ; i++)
+      c.push(a[i]);                           // a
+   for (let i = 0 ; i < VERTEX_SIZE ; i++)
+      c.push(a[a.length - VERTEX_SIZE + i]);  // + last vertex of a
+   for (let i = 0 ; i < VERTEX_SIZE ; i++)
+      c.push(b[i]);                           // + first vertex of b
+   for (let i = 0 ; i < b.length ; i++)
+      c.push(b[i]);                           // + b
+   return new Float32Array(c);
+}
+
+let squareMesh = new Float32Array([ -1,1,0, 1,1,0, -1,-1,0, 1,-1,0 ]);
+
+let uvToTorus = (u,v,r) => {
+   let theta = 2 * Math.PI * u;
+   let phi   = 2 * Math.PI * v;
+
+   let x = Math.cos(theta) * (1 + r * Math.cos(phi));
+   let y = Math.sin(theta) * (1 + r * Math.cos(phi));
+   let z = r * Math.sin(phi);
+
+   let nx = Math.cos(theta) * Math.cos(phi);
+   let ny = Math.sin(theta) * Math.cos(phi);
+   let nz = Math.sin(phi);
+
+   return [x,y,z, nx,ny,nz];
+}
+
+let uvToSphere = (u,v) => {
+   let theta = 2 * Math.PI * u;
+   let phi   = Math.PI * (v - .5);
+   let x = Math.cos(theta) * Math.cos(phi);
+   let y = Math.sin(theta) * Math.cos(phi);
+   let z = Math.sin(phi);
+   return [x,y,z, x,y,z];
+}
+
+let uvToTube = (u,v) => {
+   let theta = 2 * Math.PI * u;
+   let x = Math.cos(theta);
+   let y = Math.sin(theta);
+   let z = 2 * v - 1;
+   return [x,y,z, x,y,0];
+}
+
+let uvToDisk = (u,v,dz) => {
+   if (dz === undefined)
+      dz = 0;
+   let theta = 2 * Math.PI * u;
+   let x = Math.cos(theta) * v;
+   let y = Math.sin(theta) * v;
+   let z = dz;
+   return [x,y,z, 0,0,dz ? Math.sign(dz) : 1];
+}
+
+let torusMesh    = createMesh(32, 16, uvToTorus, .5);
+let sphereMesh   = createMesh(32, 16, uvToSphere);
+let tubeMesh     = createMesh(32, 2, uvToTube);
+let diskMesh     = createMesh(32, 2, uvToDisk);
+let diskNMesh    = createMesh(32, 2, uvToDisk, -1);
+let diskPMesh    = createMesh(32, 2, uvToDisk,  1);
+let cylinderMesh = glueMeshes(glueMeshes(tubeMesh, diskPMesh), diskNMesh);
+
+let hermite_splines = (p0, p1, r0, r1, t) => {
+    let left = [2, -3, 0, 1, -2, 3, 0, 0, 1, -2, 1, 0, 1, -1, 0, 0]
+
+    let matrix = []
+
+    for (let i = 0; i < 3; i ++) {
+        matrix[i] = matrix_multiply(left, [p0[i], p1[i], r0[i], r1[i]]).slice(0, 4)
+    }
+
+    let results = []
+
+    for (let i = 0; i < 3; i ++) {
+        results[i] = matrix[i][0] * Math.pow(t, 3)
+            + matrix[i][1] * Math.pow(t, 2)
+            + matrix[i][2] * Math.pow(t, 1)
+            + matrix[i][3] * Math.pow(t, 0)
+    }
+
+    return results;
+}
+
+
+//----------- ANIMATE EACH FRAME --------------
+
+const RED = 1;
+const GREEN = 0;
+
+
+
+function animate(gl) {
+
+   // SET ANIMATION TIME
+
+   let time = (Date.now() - startTime) / 1000;
+   setUniform('1f', 'uTime', time);
+
+   // SET LIGHT POSITION AND COLOR FOR RAYTRACING
+
+   setUniform('3fv', 'uLDir', [r3,r3,r3, -r3,-r3,-r3]);
+   setUniform('3fv', 'uLCol', [.4,.6,1, .8,.0,.0]);
+
+   // SET SPHERE GEOMETRY FOR RAYTRACING
+
+   setUniform('4fv', 'uSph', [
+      .5*Math.sin(time),0,.5*Math.cos(time), .2,
+      0,0,0,.2]);
+
+   // SET SURFACE REFLECTANCE PROPERTIES FOR RAYTRACING
+
+   setUniform('3fv', 'uAmbient' , [.2,.2,.2, .1,.1,.2]);
+   setUniform('3fv', 'uDiffuse' , [1,1,1, .5,.5,1]);
+   setUniform('4fv', 'uSpecular', [.9,.9,.9,10, 1,1,1,20]);
+
+   setUniform('Matrix4fv', 'uCamera', false, matrix_perspective(3));
+
+   // REPLACE THE BELOW BY A SCENE OF YOUR CHOICE
+/*
+   M.save();
+      M.translate(0,.3,0);
+      M.rotateZ(Math.cos(time));            // SHOULDER
+      M.translate(0,-.3,0);
+
+      M.save();
+         M.scale(.1,.3,.1);
+         drawMesh(sphereMesh, M.value());   // UPPER ARM
+      M.restore();
+
+      M.translate(0,-.3,0);
+      M.rotateZ(Math.sin(time));            // ELBOW
+      M.translate(0,-.3,0);
+
+      M.save();
+         M.scale(.1,.3,.1);
+         drawMesh(sphereMesh, M.value());   // LOWER ARM
+      M.restore();
+   M.restore();
+*/
+
+    let t = (time / 3) % 1;
+    let trans = hermite_splines([-0.5, -0.5, 0], [0.5, 0.5, 0], [1, -0.5, 0], [-1.5, 0.5, 0], t);
+
+   M.save();
+      M.translate(trans[0],trans[1],trans[2]);
+      M.rotateX(0.5);
+      M.rotateY(0.5);
+      M.scale(.3);
+      drawMesh(sphereMesh, RED);
+   M.restore();
+   // M.save();
+   //    M.rotateX(-time);
+   //    M.rotateY(-2 * time);
+   //    M.scale(.2,.2,.4);
+   //    drawMesh(sphereMesh, GREEN);
+   // M.restore();
+}
+
+// CREATE THE MATRIX OBJECT
+
+let M = new Matrix();
+
+// START EVERYTHING.
+
+gl_start(canvas1, vs, fs);
+</script>
+
+
