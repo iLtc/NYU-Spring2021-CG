@@ -402,22 +402,64 @@ function animate(gl) {
    M.restore();
 */
 
-    let t = (time / 3) % 1;
-    let trans = hermite_splines([-0.5, -0.5, 0], [0.5, 0.5, 0], [1, -0.5, 0], [-1.5, 0.5, 0], t);
+    let t = (time / 6) % 1 * 6;
+    let trans;
 
-   M.save();
-      M.translate(trans[0],trans[1],trans[2]);
-      M.rotateX(0.5);
-      M.rotateY(0.5);
-      M.scale(.3);
-      drawMesh(sphereMesh, RED);
-   M.restore();
-   // M.save();
-   //    M.rotateX(-time);
-   //    M.rotateY(-2 * time);
-   //    M.scale(.2,.2,.4);
-   //    drawMesh(sphereMesh, GREEN);
-   // M.restore();
+    if (t >= 0 && t < 2)
+        trans = hermite_splines([-0.5, -0.5, 0], [0.5, 0.5, 0], [1, -0.5, 0], [-1.5, 0.5, 0], t / 2);
+
+    if (t >= 2 && t < 4)
+        trans = hermite_splines([0.5, 0.5, 0], [-0.5, 0.5, 0], [-1.5, 0.5, 0], [-1.5, 0.5, 0], (t - 2) / 2);
+
+    if (t >= 4 && t < 6)
+        trans = hermite_splines([-0.5, 0.5, 0], [-0.5, -0.5, 0], [-1.5, 0.5, 0], [1, -0.5, 0], (t - 4) / 2);
+
+    M.save();
+        M.translate(trans[0],trans[1],trans[2]);
+        M.rotateX(0.5);
+        M.rotateY(0.5);
+        M.scale((Math.sin(time) + 1.5) / 2 * 0.1);
+        drawMesh(sphereMesh, RED);
+    M.restore();
+
+    t = ((time - 0.3) / 6) % 1 * 6;
+
+    if (t >= 0 && t < 2)
+        trans = hermite_splines([-0.5, -0.5, 0], [0.5, 0.5, 0], [1, -0.5, 0], [-1.5, 0.5, 0], t / 2);
+
+    if (t >= 2 && t < 4)
+        trans = hermite_splines([0.5, 0.5, 0], [-0.5, 0.5, 0], [-1.5, 0.5, 0], [-1.5, 0.5, 0], (t - 2) / 2);
+
+    if (t >= 4 && t < 6)
+        trans = hermite_splines([-0.5, 0.5, 0], [-0.5, -0.5, 0], [-1.5, 0.5, 0], [1, -0.5, 0], (t - 4) / 2);
+
+    M.save();
+        M.translate(trans[0],trans[1],trans[2]);
+        M.rotateX(0.5);
+        M.rotateY(0.5);
+        M.scale((Math.sin(time) + 1.5) / 2 * 0.1);
+        drawMesh(sphereMesh, RED);
+    M.restore();
+
+    t = ((time - 0.6) / 6) % 1 * 6;
+
+    if (t >= 0 && t < 2)
+        trans = hermite_splines([-0.5, -0.5, 0], [0.5, 0.5, 0], [1, -0.5, 0], [-1.5, 0.5, 0], t / 2);
+
+    if (t >= 2 && t < 4)
+        trans = hermite_splines([0.5, 0.5, 0], [-0.5, 0.5, 0], [-1.5, 0.5, 0], [-1.5, 0.5, 0], (t - 2) / 2);
+
+    if (t >= 4 && t < 6)
+        trans = hermite_splines([-0.5, 0.5, 0], [-0.5, -0.5, 0], [-1.5, 0.5, 0], [1, -0.5, 0], (t - 4) / 2);
+
+    M.save();
+        M.translate(trans[0],trans[1],trans[2]);
+        M.rotateX(0.5);
+        M.rotateY(0.5);
+        M.scale((Math.sin(time) + 1.5) / 2 * 0.1);
+        drawMesh(sphereMesh, RED);
+    M.restore();
+
 }
 
 // CREATE THE MATRIX OBJECT
