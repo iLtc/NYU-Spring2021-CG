@@ -152,6 +152,42 @@ let hx = [ -.5,  0.0,     0,  0.8,    .5,  0.0,    0, -0.8,   -.5,  0.0 ];
 let hy = [   0, -0.8,   -.5,  0.0,     0,  0.8,   .5,  0.0,     0, -0.8 ];
 let hz = [   0,  0.0,     0,  0.0,     0,  0.0,    0,  0.0,     0,  0.0 ];
 
+// Surface Of Revolution
+
+// EVALUATE A SMOOTH CURVE MADE OF HERMITE SPLINES, AT A PARAMETER VALUE t.
+
+let evalHermiteSpline = (h,t) => {
+    t *= (h.length - 2) / 2;
+    let n = 2 * Math.floor(t);
+    t = t % 1;
+    let C = matrix_transform(hermiteMatrix, [h[n+0],h[n+2],h[n+1],h[n+3]]);
+    return t*t*t*C[0] + t*t*C[1] + t*C[2] + C[3];
+}
+
+let uvToSOR = (u, v, S) => {
+    let e = 1 / 1000
+
+    let z0 = evalHermiteSpline(S[0], v)
+    let z1 = evalHermiteSpline(S[0], v + e)
+
+    let r0 = evalHermiteSpline(S[1], v)
+    let r1 = evalHermiteSpline(S[1], v + e)
+
+    let tile = Math.atan2(r0 - r1, z1 - z0)
+
+    let x = r0 * Math.cos(2 * Math.PI * u)
+    let y = r0 * Math.sin(2 * Math.PI * u)
+    let z = z0
+
+    let nx = Math.cos(tile) * Math.cos(2 * Math.PI * u)
+    let ny = Math.cos(tile) * Math.sin(2 * Math.PI * u)
+    let nz = Math.sin(tile)
+
+    return [x, y, z, nx, ny, nz]
+}
+
+let sorMesh = createMesh(32, 16, uvToSOR, [[-1, -0.5, 0.5, 1], [0, 1, 2, 3]]);
+
 //----------- ANIMATE EACH FRAME --------------
 
 function animate(gl) {
@@ -174,16 +210,6 @@ function animate(gl) {
 
    setUniform('Matrix4fv', 'uCamera', false, matrix_perspective(3));
 
-   // EVALUATE A SMOOTH CURVE MADE OF HERMITE SPLINES, AT A PARAMETER VALUE t.
-
-   let evalHermiteSpline = (h,t) => {
-      t *= (h.length - 2) / 2;
-      let n = 2 * Math.floor(t);
-      t = t % 1;
-      let C = matrix_transform(hermiteMatrix, [h[n+0],h[n+2],h[n+1],h[n+3]]);
-      return t*t*t*C[0] + t*t*C[1] + t*C[2] + C[3];
-   }
-
    // FUNCTION TO DRAW ONE BEAD
 
    let bead = (t, size, material) => {
@@ -196,20 +222,122 @@ function animate(gl) {
          M.restore();
    }
 
-   // ANIMATE THE RING OF BEADS TO FLEX OVER TIME
+    let hat = () => {
+        M.save();
+        M.scale(0.08);
+        M.translate(0, 0, -8);
+        drawMesh(createMesh(32, 16, uvToSOR, [[-1, -0.5, 0.5, 1], [0, 1, 2, 3]]), 'red');
+        M.restore();
+    }
 
-   for (let n = 0 ; n < 5 ; n++)
-      hz[2*n] = (n % 2 ? .1 : -.1) * Math.sin(4 * time);
+    let head = () => {
+        M.save();
+        M.translate(0, 0, -0.5);
+        M.scale(0.15);
+        drawMesh(createMesh(32, 16, uvToSphere), 'gold');
+        M.restore();
+    }
 
-   // DRAW EVERYTHING
+    let body = () => {
+        M.save();
+        M.scale(0.15);
+        drawMesh(createMesh(32, 16, uvToSOR, [[-2, -1, 1, 2], [1, 1, 1, 1]]), 'red');
+        M.restore();
+    }
 
-   M.save();
-      M.rotateX(.2 * Math.PI * time);
-      M.rotateY(.3 * Math.PI * time);
-      for (let t = 0 ; t <= 1 ; t += 1/48)
-         bead(t, .0375, 'gold');
-      bead((time/4) % 1, .08, 'red');
-   M.restore();
+    let left_arm = () => {
+        M.save();
+        M.rotateY(-0.5)
+        M.translate(-0.35, 0, 0);
+        M.scale(0.08);
+        drawMesh(createMesh(32, 16, uvToSOR, [[-2, -1, 1, 2], [0.5, 0.5, 0.5, 0.5]]), 'green');
+        M.restore();
+    }
+
+    let right_arm = () => {
+        M.save();
+        M.rotateY(0.5)
+        M.translate(0.35, 0, 0);
+        M.scale(0.08);
+        drawMesh(createMesh(32, 16, uvToSOR, [[-2, -1, 1, 2], [0.5, 0.5, 0.5, 0.5]]), 'green');
+        M.restore();
+    }
+
+    let left_hand = () => {
+        M.save();
+        M.translate(-0.4, 0, 0);
+        M.scale(0.05);
+        drawMesh(createMesh(32, 16, uvToSphere), 'gold');
+        M.restore();
+    }
+
+    let right_hand = () => {
+        M.save();
+        M.translate(0.4, 0, 0);
+        M.scale(0.05);
+        drawMesh(createMesh(32, 16, uvToSphere), 'gold');
+        M.restore();
+    }
+
+    let left_leg = () => {
+        M.save();
+        M.rotateY(-0.5)
+        M.translate(0, 0, 0.4);
+        M.scale(0.08);
+        drawMesh(createMesh(32, 16, uvToSOR, [[-2, -1, 1, 2], [0.5, 0.5, 0.5, 0.5]]), 'green');
+        M.restore();
+    }
+
+    let right_leg = () => {
+        M.save();
+        M.rotateY(0.5)
+        M.translate(0, 0, 0.4);
+        M.scale(0.08);
+        drawMesh(createMesh(32, 16, uvToSOR, [[-2, -1, 1, 2], [0.5, 0.5, 0.5, 0.5]]), 'green');
+        M.restore();
+    }
+
+    let left_feet = () => {
+        M.save();
+        M.translate(-0.27, 0, 0.5);
+        M.scale(0.05);
+        drawMesh(createMesh(32, 16, uvToSphere), 'gold');
+        M.restore();
+    }
+
+    let right_feet = () => {
+        M.save();
+        M.translate(0.27, 0, 0.5);
+        M.scale(0.05);
+        drawMesh(createMesh(32, 16, uvToSphere), 'gold');
+        M.restore();
+    }
+
+
+
+    // ANIMATE THE RING OF BEADS TO FLEX OVER TIME
+
+    for (let n = 0 ; n < 5 ; n++)
+        hz[2*n] = (n % 2 ? .1 : -.1) * Math.sin(4 * time);
+
+    // DRAW EVERYTHING
+
+    M.save();
+    M.rotateX(.2 * Math.PI * time);
+    M.rotateY(.3 * Math.PI * time);
+    hat()
+    head()
+    body()
+    left_arm()
+    right_arm()
+    left_hand()
+    right_hand()
+    left_leg()
+    right_leg()
+    left_feet()
+    right_feet()
+    M.restore();
+
 }
 
 // START EVERYTHING
