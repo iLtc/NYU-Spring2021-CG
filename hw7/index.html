@@ -1,0 +1,220 @@
+<script src=lib7.js></script>
+<script src=matrix.js></script>
+<script src=geometry.js></script>
+
+<body bgcolor=black text=white link=white alink=white vlink=white>
+<center>
+<canvas id='canvas1' width=600 height=600></canvas>
+</center>
+</body>
+
+
+<!!-------- VERTEX SHADER -------->
+
+<script id='my_vertex_shader' type='x-shader/x-vertex'>
+   uniform   float uTime;
+   uniform   mat4  uMatrix, uInvMatrix, uCamera;
+   attribute vec3  aPos;
+   attribute vec3  aNor;
+   varying   vec3  vPos;
+   varying   vec3  vNor;
+   void main() {
+
+      // CAMERA MATRIX IS APPLIED AFTER ALL OTHER TRANSFORMATIONS.
+      // THAT IS WHY IT MULTIPLIES FROM THE LEFT.
+
+      vec4 pos = uCamera * uMatrix * vec4(aPos, 1.);
+
+      // NORMAL IS RIGHT-MULTIPLIED BY INVERSE OF MATRIX.
+
+      vec4 nor = vec4(aNor, 0.) * uInvMatrix;
+      gl_Position = pos;
+      vPos = pos.xyz;
+      vNor = nor.xyz;
+   }
+</script>
+
+
+<!!-------- FRAGMENT SHADER -------->
+
+<script id='my_fragment_shader' type='x-shader/x-fragment'>
+
+ uniform float uTime;   // TIME, IN SECONDS
+
+ varying vec3 vPos;
+ varying vec3 vNor;
+
+ float fl = 3.0;
+
+ const int nl = 2; // NUMBER OF LIGHTS
+ const int ns = 2; // NUMBER OF SPHERES
+
+ uniform vec3 uLDir[nl];
+ uniform vec3 uLCol[nl];
+
+ uniform vec3 uAmbient;
+ uniform vec3 uDiffuse;
+ uniform vec4 uSpecular;
+
+ void main() {
+    vec3 N = normalize(vNor);
+
+    // WE DO PHONG SHADING HERE ONLY FOR MATERIAL 0.
+
+    vec3 color = uAmbient;
+    for (int n = 0 ; n < nl ; n++) {
+       vec3 R = 2. * dot(uLDir[n], N) * N - uLDir[n];
+       color += uLCol[n] * (
+                 uDiffuse * max(0., dot(uLDir[n], N))
+               + uSpecular.rgb * pow(max(0., R.z), uSpecular.w)
+       );
+    }
+    gl_FragColor = vec4(sqrt(color), 1.0);
+ }
+</script>
+
+
+<!!-------- A PROPERLY DESCRIPTIVE TITLE -------->
+
+<script id='my_title' type='text/html'>
+MESHES AND SPLINES
+</script>
+
+
+<!!-------- HERE IS WHERE YOU CAN PROVIDE A LONGER TEXT DESCRIPTION -------->
+
+<script id='my_instructions' type='text/html'><font color=#b0b0b0>
+Using spline curves to<br>
+animate mesh shapes.
+</script>
+
+
+<!!-------- GENERAL SUPPORT CODE -------->
+   
+<script>
+
+// CREATE THE HTML DOCUMENT
+
+let vs = my_vertex_shader.innerHTML,
+    fs = my_fragment_shader.innerHTML;
+    fs = fs.substring(1, fs.length);
+
+document.body.innerHTML = [''
+   ,'<center><font size=6 color=#b0b0b0>' + my_title.innerHTML + '</center>'
+   ,'<TABLE cellspacing=0 cellpadding=0><TR>'
+   ,'<td width=50></td><td><font color=red size=5><div id=errorMessage>&nbsp;</div></font></td>'
+   ,'</TR><TR>'
+   ,'<table cellspacing=10>'
+   ,'<tr>'
+   ,'<td valign=top><font size=2 color=red><div id=errorMarker>&nbsp;</div></font></td>'
+   ,'<td valign=top>'
+   ,'<textArea id=textArea spellcheck=false '
+   ,'style="font:16px courier;outline-width:0;border-style:none;resize:none;overflow:scroll;"'
+   ,'></textArea>'
+   ,'</td><td valign=top>' + document.body.innerHTML + '</td>'
+   ,'<td valign=top><font size=5>' + my_instructions.innerHTML + '</td>'
+   ,'</tr></table>'
+   ,'</TR></TABLE>'
+   ].join('');
+
+// SET UP THE EDITABLE TEXT AREA ON THE LEFT SIDE.
+
+let text = fs.split('\n'), cols = 0;
+for (let i = 0 ; i < text.length ; i++)
+   cols = Math.max(cols, text[i].length);
+
+textArea.rows = text.length;
+textArea.cols = cols;
+textArea.value = fs;
+textArea.style.backgroundColor = '#202020';
+textArea.style.color = 'white';
+
+// REPARSE THE SHADER PROGRAM AFTER EVERY KEYSTROKE.
+
+textArea.onkeyup = function() { canvas1.setShaders(vs, this.value); }
+
+let startTime = Date.now();
+
+let r3 = Math.sqrt(1/3);
+
+let hermiteMatrix = [ 2,-3,0,1, -2,3,0,0, 1,-2,1,0, 1,-1,0,0 ];
+
+//----------- DEFINE MATERIALS --------------
+
+materials['red'  ] = { ambient: [.2,.0,.0], diffuse: [1,0,0], specular: [.9,.9,.9,10] };
+materials['green'] = { ambient: [.0,.2,.0], diffuse: [0,1,0], specular: [.9,.9,.9,10] };
+materials['blue' ] = { ambient: [.0,.0,.2], diffuse: [0,0,1], specular: [.9,.9,.9,10] };
+materials['gold' ] = { ambient: [.2,.15,0], diffuse: [.1,.075,0], specular: [1,.7,.0,20] };
+
+//----------- DEFINE THE HERMITE SPLINE CURVE DATA -------------
+
+let hx = [ -.5,  0.0,     0,  0.8,    .5,  0.0,    0, -0.8,   -.5,  0.0 ];
+let hy = [   0, -0.8,   -.5,  0.0,     0,  0.8,   .5,  0.0,     0, -0.8 ];
+let hz = [   0,  0.0,     0,  0.0,     0,  0.0,    0,  0.0,     0,  0.0 ];
+
+//----------- ANIMATE EACH FRAME --------------
+
+function animate(gl) {
+
+   // SET ANIMATION TIME
+
+   let time = (Date.now() - startTime) / 1000;
+   setUniform('1f', 'uTime', time);
+
+   // SET LIGHT POSITION AND COLOR FOR RAYTRACING
+
+   setUniform('3fv', 'uLDir', [r3,r3,r3, -r3,-r3,-r3]);
+   setUniform('3fv', 'uLCol', [1,1,1, .8,.6,.0]);
+
+   // SET SURFACE REFLECTANCE PROPERTIES
+
+   setUniform('3fv', 'uAmbient' , [.2,.2,.2]);
+   setUniform('3fv', 'uDiffuse' , [1,1,1]);
+   setUniform('4fv', 'uSpecular', [.9,.9,.9,10]);
+
+   setUniform('Matrix4fv', 'uCamera', false, matrix_perspective(3));
+
+   // EVALUATE A SMOOTH CURVE MADE OF HERMITE SPLINES, AT A PARAMETER VALUE t.
+
+   let evalHermiteSpline = (h,t) => {
+      t *= (h.length - 2) / 2;
+      let n = 2 * Math.floor(t);
+      t = t % 1;
+      let C = matrix_transform(hermiteMatrix, [h[n+0],h[n+2],h[n+1],h[n+3]]);
+      return t*t*t*C[0] + t*t*C[1] + t*C[2] + C[3];
+   }
+
+   // FUNCTION TO DRAW ONE BEAD
+
+   let bead = (t, size, material) => {
+         M.save();
+            M.translate(evalHermiteSpline(hx, t),
+                        evalHermiteSpline(hy, t),
+                        evalHermiteSpline(hz, t));
+            M.scale(size);
+            drawMesh(sphereMesh, material);
+         M.restore();
+   }
+
+   // ANIMATE THE RING OF BEADS TO FLEX OVER TIME
+
+   for (let n = 0 ; n < 5 ; n++)
+      hz[2*n] = (n % 2 ? .1 : -.1) * Math.sin(4 * time);
+
+   // DRAW EVERYTHING
+
+   M.save();
+      M.rotateX(.2 * Math.PI * time);
+      M.rotateY(.3 * Math.PI * time);
+      for (let t = 0 ; t <= 1 ; t += 1/48)
+         bead(t, .0375, 'gold');
+      bead((time/4) % 1, .08, 'red');
+   M.restore();
+}
+
+// START EVERYTHING
+
+gl_start(canvas1, vs, fs);
+</script>
+
+
