@@ -189,7 +189,14 @@ function animate(gl) {
 
    // SET LIGHT POSITION AND COLOR FOR RAYTRACING
 
-   setUniform('3fv', 'uLDir', [r3,r3,r3, -r3,-r3,-r3]);
+   setUniform('3fv', 'uLDir', [
+       r3 * Math.sin(light_angle) * Math.sqrt(2),
+       r3 * Math.cos(light_angle) * Math.sqrt(2),
+       r3,
+       -r3 * Math.sin(light_angle) * Math.sqrt(2),
+       -r3 * Math.cos(light_angle) * Math.sqrt(2),
+       -r3
+   ]);
    setUniform('3fv', 'uLCol', [1,1,1, 1,1,1]);
 
    // SET SURFACE REFLECTANCE PROPERTIES
@@ -249,6 +256,21 @@ function animate(gl) {
         M.translate(-0.4, -0.4, 0)
         M.scale(.05);
         drawMesh(tubeMesh, 'blue');
+    M.restore()
+
+    // rotating dial
+    M.save()
+        M.translate(0.6, -0.3, 0)
+        M.translate(Math.sin(light_angle) * 0.1, Math.cos(light_angle) * 0.1, 0)
+        M.scale(.05);
+        drawMesh(sphereMesh, 'red');
+    M.restore()
+
+    // rotating dial frame
+    M.save()
+        M.translate(0.6, -0.3, 0)
+        M.scale(.2);
+        drawMesh(createMesh(32, 20, uvToTorus, .05), 'red')
     M.restore()
 
 
@@ -323,12 +345,14 @@ let red_x = 0;
 let green_x = 0;
 let blue_x = 0;
 
-canvas1.onMove = (x, y) => {
+let light_angle = Math.PI / 4
 
+canvas1.onMove = (x, y) => {
+    // console.log(x, y)
 }
 
 canvas1.onDrag = (x, y) => {
-    if (y > -0.2) {
+    if (y > -0.1) {
         if (Math.abs(x - start_x) > Math.abs(y - start_y)) {
             if (x - previous_x > 0)
                 rotate_y = (rotate_y + 0.05) % Math.PI;
@@ -366,6 +390,31 @@ canvas1.onDrag = (x, y) => {
             diffuse: [custom_red, custom_green, custom_blue],
             specular: [.9,.9,.9,10]
         };
+    }
+
+    if (x >= 0.4 && x <= 0.8 && y <= -0.1 && y >= -0.5) {
+        let temp_x = x - 0.6
+        let temp_y = y - (-0.3)
+
+        let res
+
+        if (temp_x >= 0 && temp_y >= 0) {
+            res = Math.atan(temp_x / temp_y)
+        }
+
+        if (temp_x >= 0 && temp_y <= 0) {
+            res = Math.atan(-temp_y / temp_x) + Math.PI / 2
+        }
+
+        if (temp_x <= 0 && temp_y <= 0) {
+            res = Math.atan(temp_x / temp_y) + Math.PI
+        }
+
+        if (temp_x <= 0 && temp_y >= 0) {
+            res = Math.atan(-temp_y / temp_x) + Math.PI * 1.5
+        }
+
+        light_angle = res
     }
 }
 
