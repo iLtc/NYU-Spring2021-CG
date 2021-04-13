@@ -148,6 +148,18 @@ materials['green'] = { ambient: [.0,.2,.0], diffuse: [0,1,0], specular: [.9,.9,.
 materials['blue' ] = { ambient: [.0,.0,.2], diffuse: [0,0,1], specular: [.9,.9,.9,10] };
 materials['gold' ] = { ambient: [.2,.15,0], diffuse: [.1,.075,0], specular: [1,.7,.0,20] };
 
+let custom_red = 0.5;
+let custom_green = 0.5;
+let custom_blue = 0.5;
+
+materials['custom'] = {
+    ambient: [.2 * custom_red, .2 * custom_green, .2 * custom_blue],
+    diffuse: [custom_red, custom_green, custom_blue],
+    specular: [.9,.9,.9,10]
+};
+
+
+
 //----------- DEFINE THE HERMITE SPLINE CURVE DATA
 
 let hx = [ -.5,  0.0,     0,  0.8,    .5,  0.0,    0, -0.8,   -.5,  0.0 ];
@@ -170,7 +182,6 @@ let rayHitsSphere = (V, W, S) => {
 //----------- ANIMATE EACH FRAME
 
 function animate(gl) {
-
    // SET ANIMATION TIME
 
    let time = (Date.now() - startTime) / 1000;
@@ -201,58 +212,112 @@ function animate(gl) {
 
    // CREATE A RAY FOR HIT TESTING
 
-   let V = [ 0, 0, fl ];
-   let W = normalize([ sx, sy, -fl ]);
-
-   // FUNCTION TO DRAW ONE BEAD
-
-   let bead = (t, size, material) => {
-         let ampl = isMousePressed ? 2 : 1;
-         M.save();
-
-            let P = [evalHermiteSpline(hx, t),
-                     evalHermiteSpline(hy, t),
-                     evalHermiteSpline(hz, t) * ampl];
-
-            M.translate(P);
-            M.scale(size);
-
-	    // COMPUTE SPHERE S = [x,y,z,r] FOR HIT-TESTING
-
-	    let m = M.value();
-	    let S = [ m[12], m[13], m[14], size ];
-
-	    // DRAW WITH A DIFFERENT MATERIAL IF AT CURSOR
-	    
-            drawMesh(sphereMesh,
-
-	       // IF A KEY IS PRESSED, OBJECT AT CURSOR BLINKS
-	       // OTHERWISE, OBJECT AT CURSOR IS WHITE
-
-	       rayHitsSphere(V,W,S)
-	       ? isKeyPressed
-	         ? (time * 10) % 2 > 1 ? 'blue' : 'green'
-		 : 'white'
-	       : material);
-
-         M.restore();
-   }
+   // let V = [ 0, 0, fl ];
+   // let W = normalize([ sx, sy, -fl ]);
+   //
+   // // FUNCTION TO DRAW ONE BEAD
+   //
+   // let bead = (t, size, material) => {
+   //       let ampl = isMousePressed ? 2 : 1;
+   //       M.save();
+   //
+   //          let P = [evalHermiteSpline(hx, t),
+   //                   evalHermiteSpline(hy, t),
+   //                   evalHermiteSpline(hz, t) * ampl];
+   //
+   //          M.translate(P);
+   //          M.scale(size);
+   //
+	//     // COMPUTE SPHERE S = [x,y,z,r] FOR HIT-TESTING
+   //
+	//     let m = M.value();
+	//     let S = [ m[12], m[13], m[14], size ];
+   //
+	//     // DRAW WITH A DIFFERENT MATERIAL IF AT CURSOR
+	//
+   //          drawMesh(sphereMesh,
+   //
+	//        // IF A KEY IS PRESSED, OBJECT AT CURSOR BLINKS
+	//        // OTHERWISE, OBJECT AT CURSOR IS WHITE
+   //
+	//        rayHitsSphere(V,W,S)
+	//        ? isKeyPressed
+	//          ? (time * 10) % 2 > 1 ? 'blue' : 'green'
+	// 	 : 'white'
+	//        : material);
+   //
+   //       M.restore();
+   // }
 
    // ANIMATE THE RING OF BEADS TO FLEX OVER TIME
 
-   for (let n = 0 ; n < 5 ; n++)
-      hz[2*n] = (n % 2 ? .1 : -.1) * Math.sin(4 * time);
+   // for (let n = 0 ; n < 5 ; n++)
+   //    hz[2*n] = (n % 2 ? .1 : -.1) * Math.sin(4 * time);
 
    // DRAW EVERYTHING
 
-   M.save();
-      let freq = isMousePressed ? 4 : 1;
-      M.rotateX(.10 * Math.PI * time * freq);
-      M.rotateY(.15 * Math.PI * time * freq);
-      for (let t = 0 ; t <= 1 ; t += 1/24)
-         bead(t, .075, 'gold');
-      bead((freq*time/8) % 1, .12, 'red');
-   M.restore();
+   // M.save();
+   //    let freq = isMousePressed ? 4 : 1;
+   //    M.rotateX(.10 * Math.PI * time * freq);
+   //    M.rotateY(.15 * Math.PI * time * freq);
+   //    for (let t = 0 ; t <= 1 ; t += 1/24)
+   //       bead(t, .075, 'gold');
+   //    bead((freq*time/8) % 1, .12, 'red');
+   // M.restore();
+
+    // the main object
+    M.save()
+        M.translate(0, 0.3, 0)
+        M.scale(.3);
+        drawMesh(torusMesh, 'custom');
+    M.restore()
+
+    // red slide
+    M.save()
+        M.translate(red_x, -0.65, 0);
+        M.scale(.05);
+        drawMesh(sphereMesh, 'red');
+    M.restore()
+
+    // red slider frame
+    M.save()
+        M.rotateY(Math.PI/2)
+        M.translate(0, -0.65, 0)
+        M.scale(0.01, 0.01, 0.8);
+        drawMesh(cylinderMesh, 'red');
+    M.restore()
+
+    // green slide
+    M.save()
+        M.translate(green_x, -0.8, 0);
+        M.scale(.05);
+        drawMesh(sphereMesh, 'green');
+    M.restore()
+
+    // green slider frame
+    M.save()
+    M.rotateY(Math.PI/2)
+    M.translate(0, -0.8, 0)
+    M.scale(0.01, 0.01, 0.8);
+    drawMesh(cylinderMesh, 'green');
+    M.restore()
+
+    // blue slide
+    M.save()
+        M.translate(blue_x, -0.95, 0);
+        M.scale(.05);
+        drawMesh(sphereMesh, 'blue');
+    M.restore()
+
+    // blue slider frame
+    M.save()
+        M.rotateY(Math.PI/2)
+        M.translate(0, -0.95, 0)
+        M.scale(0.01, 0.01, 0.8);
+        drawMesh(cylinderMesh, 'blue');
+    M.restore()
+
+
 
 /*
    // PLACE A SPHERE AT THE CURSOR.
@@ -267,10 +332,33 @@ function animate(gl) {
 
 // SAVE THE CURSOR POSITION AS sx,sy
 
-let sx = 0, sy = 0;
-canvas1.onMove = (x,y) => {
-   sx = x;
-   sy = y;
+let red_x = 0;
+let green_x = 0;
+let blue_x = 0;
+
+canvas1.onDrag = (x, y) => {
+    if (y < -0.5) {
+        if (y <= -0.6 && y >= -0.7 && Math.abs(x) < 0.8) {
+            red_x = x;
+            custom_red = (x + 0.8) / 1.6
+        }
+
+        if (y <= -0.75 && y >= -0.85 && Math.abs(x) < 0.8) {
+            green_x = x;
+            custom_green = (x + 0.8) / 1.6
+        }
+
+        if (y <= -0.9 && y >= -1 && Math.abs(x) < 0.8) {
+            blue_x = x;
+            custom_blue = (x + 0.8) / 1.6
+        }
+
+        materials['custom'] = {
+            ambient: [.2 * custom_red, .2 * custom_green, .2 * custom_blue],
+            diffuse: [custom_red, custom_green, custom_blue],
+            specular: [.9,.9,.9,10]
+        };
+    }
 }
 
 // RECORD WHETHER THE MOUSE IS PRESSED
