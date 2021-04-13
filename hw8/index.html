@@ -406,6 +406,26 @@ canvas1.onPress   = (x,y) => {
 
 canvas1.onRelease = (x,y) => {
     isMousePressed = false;
+let light_mode = () => {
+    document.body.style.backgroundColor = "white";
+
+    for (let item of document.getElementsByTagName("font")) {
+        item.style.color = "black";
+    }
+
+    document.getElementsByTagName("textarea")[0].style.backgroundColor = "white"
+    document.getElementsByTagName("textarea")[0].style.color = "black"
+}
+
+let dark_mode = () => {
+    document.body.style.backgroundColor = "black";
+
+    for (let item of document.getElementsByTagName("font")) {
+        item.style.color = "#b0b0b0";
+    }
+
+    document.getElementsByTagName("textarea")[0].style.backgroundColor = "black"
+    document.getElementsByTagName("textarea")[0].style.color = "white"
 }
 
 // RECORD WHETHER ANY KEY IS PRESSED
