@@ -85,8 +85,8 @@ RESPONDING TO THE MOUSE AND KEYBOARD
 <!!-------- HERE IS WHERE YOU CAN PROVIDE A LONGER TEXT DESCRIPTION -------->
 
 <script id='my_instructions' type='text/html'><font color=#b0b0b0>
-Objects in the scene now respond<br>
-to mouse and keyboard events.
+    If you drag the donut horizontally or vertically, <br>it will rotate horizontally or vertically.
+</font>
 </script>
 
 
@@ -190,7 +190,7 @@ function animate(gl) {
    // SET LIGHT POSITION AND COLOR FOR RAYTRACING
 
    setUniform('3fv', 'uLDir', [r3,r3,r3, -r3,-r3,-r3]);
-   setUniform('3fv', 'uLCol', [1,1,1, .8,.6,.0]);
+   setUniform('3fv', 'uLCol', [1,1,1, 1,1,1]);
 
    // SET SURFACE REFLECTANCE PROPERTIES
 
@@ -268,6 +268,8 @@ function animate(gl) {
     // the main object
     M.save()
         M.translate(0, 0.3, 0)
+        M.rotateX(rotate_x)
+        M.rotateY(rotate_y)
         M.scale(.3);
         drawMesh(torusMesh, 'custom');
     M.restore()
@@ -317,8 +319,6 @@ function animate(gl) {
         drawMesh(cylinderMesh, 'blue');
     M.restore()
 
-
-
 /*
    // PLACE A SPHERE AT THE CURSOR.
 
@@ -332,11 +332,41 @@ function animate(gl) {
 
 // SAVE THE CURSOR POSITION AS sx,sy
 
+let start_x;
+let start_y;
+
+let previous_x;
+let previous_y;
+
+let rotate_x = 0;
+let rotate_y = 0;
+
 let red_x = 0;
 let green_x = 0;
 let blue_x = 0;
 
+canvas1.onMove = (x, y) => {
+
+}
+
 canvas1.onDrag = (x, y) => {
+    if (y > -0.2) {
+        if (Math.abs(x - start_x) > Math.abs(y - start_y)) {
+            if (x - previous_x > 0)
+                rotate_y = (rotate_y + 0.05) % Math.PI;
+            else
+                rotate_y = (rotate_y - 0.05) % Math.PI;
+        } else {
+            if (y - previous_y > 0)
+                rotate_x = (rotate_x - 0.05) % Math.PI;
+            else
+                rotate_x = (rotate_x + 0.05) % Math.PI;
+        }
+
+        previous_x = x;
+        previous_y = y;
+    }
+
     if (y < -0.5) {
         if (y <= -0.6 && y >= -0.7 && Math.abs(x) < 0.8) {
             red_x = x;
@@ -364,8 +394,19 @@ canvas1.onDrag = (x, y) => {
 // RECORD WHETHER THE MOUSE IS PRESSED
 
 let isMousePressed = false;
-canvas1.onPress   = (x,y) => isMousePressed = true;
-canvas1.onRelease = (x,y) => isMousePressed = false;
+canvas1.onPress   = (x,y) => {
+    isMousePressed = true;
+
+    start_x = x;
+    start_y = y;
+
+    previous_x = x;
+    previous_y = y;
+}
+
+canvas1.onRelease = (x,y) => {
+    isMousePressed = false;
+}
 
 // RECORD WHETHER ANY KEY IS PRESSED
 
