@@ -267,12 +267,45 @@ function animate(gl) {
 
     // the main object
     M.save()
-        M.translate(0, 0.3, 0)
+        if (!is_shaking)
+            M.translate(0, 0.3, 0)
+        else {
+            M.translate((Math.random() * 0.2 - 0.1), 0.3 + (Math.random() * 0.2 - 0.1), (Math.random() * 0.2 - 0.1))
+        }
         M.rotateX(rotate_x)
         M.rotateY(rotate_y)
         M.scale(.3);
         drawMesh(torusMesh, 'custom');
     M.restore()
+
+    // left button
+    M.save()
+        M.translate(-0.6, -0.4, left_button_z);
+        M.scale(.05);
+        drawMesh(sphereMesh, 'red');
+    M.restore()
+
+    // left button frame
+    M.save()
+        M.translate(-0.6, -0.4, 0)
+        M.scale(.05);
+        drawMesh(tubeMesh, 'blue');
+    M.restore()
+
+    // right button
+    M.save()
+        M.translate(-0.4, -0.4, right_button_z);
+        M.scale(.05);
+        drawMesh(sphereMesh, 'green');
+    M.restore()
+
+    // left button frame
+    M.save()
+        M.translate(-0.4, -0.4, 0)
+        M.scale(.05);
+        drawMesh(tubeMesh, 'blue');
+    M.restore()
+
 
     // red slide
     M.save()
@@ -393,6 +426,12 @@ canvas1.onDrag = (x, y) => {
 
 // RECORD WHETHER THE MOUSE IS PRESSED
 
+let left_button_z = 0.05
+let right_button_z = 0.05
+
+let is_shaking = false
+let is_light_mode = false
+
 let isMousePressed = false;
 canvas1.onPress   = (x,y) => {
     isMousePressed = true;
@@ -402,10 +441,34 @@ canvas1.onPress   = (x,y) => {
 
     previous_x = x;
     previous_y = y;
+
+    if (x <= -0.55 && x >= -0.65 && y <= -0.35 && y >= -0.45) {
+        if (is_light_mode) {
+            left_button_z = 0.05
+            dark_mode()
+        } else {
+            left_button_z = 0
+            light_mode()
+        }
+
+        is_light_mode = !is_light_mode
+    }
+
+    if (x <= -0.35 && x >= -0.45 && y <= -0.35 && y >= -0.45) {
+        right_button_z = 0
+        is_shaking = true
+    }
 }
 
 canvas1.onRelease = (x,y) => {
     isMousePressed = false;
+
+    if (x <= -0.35 && x >= -0.45 && y <= -0.35 && y >= -0.45) {
+        right_button_z = 0.05
+        is_shaking = false
+    }
+}
+
 let light_mode = () => {
     document.body.style.backgroundColor = "white";
 
