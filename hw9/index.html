@@ -1,0 +1,427 @@
+<script src=lib9.js></script>
+<script src=math.js></script>
+<script src=matrix.js></script>
+<script src=geometry.js></script>
+
+<body bgcolor=black text=white link=white alink=white vlink=white>
+<center>
+<canvas id='canvas1' width=600 height=600></canvas>
+</center>
+</body>
+
+
+<!!-------- VERTEX SHADER -------->
+
+<script id='my_vertex_shader' type='x-shader/x-vertex'>
+   uniform   float uTime;
+   uniform   mat4  uMatrix, uInvMatrix, uCamera;
+   attribute vec3  aPos;
+   attribute vec3  aNor;
+   varying   vec3  vPos;
+   varying   vec3  vNor;
+   void main() {
+
+      // CAMERA MATRIX IS APPLIED AFTER ALL OTHER TRANSFORMATIONS.
+      // THAT IS WHY IT MULTIPLIES FROM THE LEFT.
+
+      vec4 pos = uCamera * uMatrix * vec4(aPos, 1.);
+
+      // NORMAL IS RIGHT-MULTIPLIED BY INVERSE OF MATRIX.
+
+      vec4 nor = vec4(aNor, 0.) * uInvMatrix;
+      gl_Position = pos;
+      vPos = pos.xyz;
+      vNor = nor.xyz;
+   }
+</script>
+
+
+<!!-------- FRAGMENT SHADER -------->
+
+<script id='my_fragment_shader' type='x-shader/x-fragment'>
+
+ uniform float uTime;   // TIME, IN SECONDS
+
+ varying vec3 vPos;
+ varying vec3 vNor;
+
+ float fl = 3.0;
+
+ const int nl = 2; // NUMBER OF LIGHTS
+ const int ns = 2; // NUMBER OF SPHERES
+
+ uniform vec3 uLDir[nl];
+ uniform vec3 uLCol[nl];
+
+ uniform vec3 uAmbient;
+ uniform vec3 uDiffuse;
+ uniform vec4 uSpecular;
+
+ void main() {
+    vec3 N = normalize(vNor);
+
+    // WE DO PHONG SHADING HERE ONLY FOR MATERIAL 0.
+
+    vec3 color = uAmbient;
+    for (int n = 0 ; n < nl ; n++) {
+       vec3 R = 2. * dot(uLDir[n], N) * N - uLDir[n];
+       color += uLCol[n] * (
+                 uDiffuse * max(0., dot(uLDir[n], N))
+               + uSpecular.rgb * pow(max(0., R.z), uSpecular.w)
+       );
+    }
+    gl_FragColor = vec4(sqrt(color), 1.0);
+ }
+</script>
+
+
+<!!-------- A PROPERLY DESCRIPTIVE TITLE -------->
+
+<script id='my_title' type='text/html'>
+ANIMATION SEQUENCES
+</script>
+
+
+<!!-------- HERE IS WHERE YOU CAN PROVIDE A LONGER TEXT DESCRIPTION -------->
+
+<script id='my_instructions' type='text/html'><font color=#b0b0b0>
+This is a simple example<br>
+of objects animating in<br>
+a sequence.
+</script>
+
+
+<!!-------- GENERAL SUPPORT CODE -------->
+   
+<script>
+
+// CREATE THE HTML DOCUMENT
+
+let vs = my_vertex_shader.innerHTML,
+    fs = my_fragment_shader.innerHTML;
+    fs = fs.substring(1, fs.length);
+
+document.body.innerHTML = [''
+   ,'<center><font size=6 color=#b0b0b0>' + my_title.innerHTML + '</center>'
+   ,'<TABLE cellspacing=0 cellpadding=0><TR>'
+   ,'<td width=50></td><td><font color=red size=5><div id=errorMessage>&nbsp;</div></font></td>'
+   ,'</TR><TR>'
+   ,'<table cellspacing=10>'
+   ,'<tr>'
+   ,'<td valign=top><font size=2 color=red><div id=errorMarker>&nbsp;</div></font></td>'
+   ,'<td valign=top>'
+   ,'<textArea id=textArea spellcheck=false '
+   ,'style="font:16px courier;outline-width:0;border-style:none;resize:none;overflow:scroll;"'
+   ,'></textArea>'
+   ,'</td><td valign=top>' + document.body.innerHTML + '</td>'
+   ,'<td valign=top><font size=5>' + my_instructions.innerHTML + '</td>'
+   ,'</tr></table>'
+   ,'</TR></TABLE>'
+   ].join('');
+
+//----------- SET UP THE EDITABLE TEXT AREA ON THE LEFT SIDE.
+
+let text = fs.split('\n'), cols = 0;
+for (let i = 0 ; i < text.length ; i++)
+   cols = Math.max(cols, text[i].length);
+
+textArea.rows = text.length;
+textArea.cols = cols;
+textArea.value = fs;
+textArea.style.backgroundColor = '#202020';
+textArea.style.color = 'white';
+
+//----------- REPARSE THE SHADER PROGRAM AFTER EVERY KEYSTROKE.
+
+textArea.onkeyup = function() { canvas1.setShaders(vs, this.value); }
+
+let startTime = Date.now();
+
+let r3 = Math.sqrt(1/3);
+
+let hermiteMatrix = [ 2,-3,0,1, -2,3,0,0, 1,-2,1,0, 1,-1,0,0 ];
+
+//----------- DEFINE MATERIALS
+
+materials['black'  ] = { ambient: [.0,.0,.0], diffuse: [0,0,0], specular: [.9,.9,.9,10] };
+materials['blue'   ] = { ambient: [.0,.0,.2], diffuse: [0,0,1], specular: [.9,.9,.9,10] };
+materials['brass'  ] = { ambient: [.03,.02,.01], diffuse: [.03,.02,.01], specular: [.9,.6,.3,10] };
+materials['cyan'   ] = { ambient: [.0,.15,.15], diffuse: [0,.075,.075], specular: [0,.7,.7,10] };
+materials['gold'   ] = { ambient: [.2,.15,0], diffuse: [.1,.075,0], specular: [1,.7,.0,10] };
+materials['green'  ] = { ambient: [.0,.1,.0], diffuse: [0,.5,0], specular: [.6,.6,.6,10] };
+materials['magenta'] = { ambient: [.1,.0,.1], diffuse: [.5,0,.5], specular: [.6,.0,.6,10] };
+materials['red'    ] = { ambient: [.2,.0,.0], diffuse: [1,0,0], specular: [.9,.9,.9,10] };
+materials['steel'  ] = { ambient: [.03,.03,.03], diffuse: [.03,.03,.03], specular: [1,1,1,15] };
+materials['white'  ] = { ambient: [.2,.2,.2], diffuse: [1,1,1], specular: [.9,.9,.9,10] };
+materials['yellow' ] = { ambient: [.2,.2,.0], diffuse: [1,1,0], specular: [.9,.9,.0,10] };
+
+//----------- DEFINE THE HERMITE SPLINE CURVE DATA
+
+let hx = [ -.5,  0.0,     0,  0.8,    .5,  0.0,    0, -0.8,   -.5,  0.0 ];
+let hy = [   0, -0.8,   -.5,  0.0,     0,  0.8,   .5,  0.0,     0, -0.8 ];
+let hz = [   0,  0.0,     0,  0.0,     0,  0.0,    0,  0.0,     0,  0.0 ];
+
+//----------- FOCAL LENGTH OF CAMERA
+
+let fl = 3;
+
+//----------- FIND OUT WHETHER A RAY HITS A SPHERE
+
+let rayHitsSphere = (V, W, S) => {
+   let Vp = [ V[0] - S[0], V[1] - S[1], V[2] - S[2] ];
+   let vw = dot(Vp, W);
+   let d = vw * vw - dot(Vp, Vp) + S[3] * S[3];
+   return d > 0;
+}
+
+let lerp = (a,b,t) => a + t * (b - a); // LINEAR INTERPOLATION
+
+let N = 0; // GREATER N INCREASES "NERVOUSNESS" OF BIG OBJECT
+
+// TIMING TABLE FOR THE ANIMATION SEQUENCE
+
+let timing = [
+   [0, lerp(1,.5,N)],
+   [1.8, lerp(2.3,2.1,N)], 
+   [lerp(2,2.5,N), 2.8],
+   [2.0, 3.2],
+   [3.4, 3.9],
+   [4.3, 5.0],
+];
+
+// EASE CURVE TO ACCELERATE FROM REST AND THEN DECELERATE TO REST
+
+let sCurve = t => (3 - 2 * t) * t * t;
+
+// EVALUATE THE TIMING OF ONE ANIMATION PARAMETER FOR THIS FRAME
+
+let evalTiming = n => {
+   let t0 = timing[n][0];
+   let t1 = timing[n][1];
+
+   if (animationTime < t0)
+      return 0;
+   if (animationTime > t1)
+      return 1;
+   return sCurve((animationTime - t0) / (t1 - t0));
+}
+
+// CONVERT BETWEEN SLIDER POSITION AND VALUE RANGE BETWEEN 0.0 AND 1.0
+
+let sliderToT = s => Math.max(0, 10 * (sw/2 + s));
+let tToSlider = t => Math.max(sr-sw, Math.min(sw-sr, t / 10 - sw/2));
+
+let animationTime = 0, animationRunning = false, prevTime = 0;
+
+//----------- ANIMATE EACH FRAME
+
+function animate(gl) {
+
+   let time = (Date.now() - startTime) / 1000;
+
+   // COMPUTE animationTime FOR THIS FRAME
+
+   switch (widgetChanged) {
+   case 0:
+      animationTime = 0;
+      widgetValue[2] = sr-sw;
+      break;
+   case 1:
+      if (widgetValue[1]) {
+         animationTime += time - prevTime;
+         widgetValue[2] = tToSlider(animationTime);
+      }
+      break;
+   case 2:
+      animationTime = sliderToT(widgetValue[2]);
+      break;
+   }
+   prevTime = time;
+
+   // EVALUATE ALL ANIMATION TIMING PARAMETERS
+
+   let T = [];
+   for (let i = 0 ; i < timing.length ; i++)
+      T[i] = evalTiming(i);
+
+   // SET ANIMATION TIME IN FRAGMENT SHADER
+
+   setUniform('1f', 'uTime', time);
+
+   // SET LIGHT POSITION AND COLOR FOR RAYTRACING
+
+   setUniform('3fv', 'uLDir', [r3,r3,r3, -r3,-r3,-r3]);
+   setUniform('3fv', 'uLCol', [.6,.8,1, .4,.3,.2]);
+
+   // SET SURFACE REFLECTANCE PROPERTIES
+
+   setUniform('3fv', 'uAmbient' , [.2,.2,.2]);
+   setUniform('3fv', 'uDiffuse' , [1,1,1]);
+   setUniform('4fv', 'uSpecular', [.9,.9,.9,10]);
+
+   setUniform('Matrix4fv', 'uCamera', false, matrix_perspective(3));
+
+   // DRAW CONTROL WIDGETS
+
+   for (let n = 0 ; n < widgetValue.length ; n++) {
+
+      let p = widgetPos[n];
+
+      switch (widgetType[n]) {
+      case 'slider':
+
+         // DRAW SLIDER FIXED PART
+
+         M.save();
+            M.translate(p[0],p[1],0);
+            M.rotateY(Math.PI/2);
+            M.scale(sr/2,sr/2,sw);
+            drawMesh(cylinderMesh, 'brass');
+         M.restore();
+
+         // DRAW SLIDER MOVING PART
+
+         M.save();
+            M.translate(p[0]+widgetValue[n],p[1],0);
+            M.scale(sr);
+            drawMesh(sphereMesh, selected == n ? 'white' : widgetColor[n]);
+         M.restore();
+
+	 break;
+
+      case 'button':
+      case 'toggle':
+
+         // DRAW BUTTON FIXED PART
+
+         M.save();
+            M.translate(p[0],p[1],0);
+            M.scale(sw,sr,sr/2);
+	    drawMesh(cubeMesh, 'brass');
+         M.restore();
+
+         // DRAW BUTTON CHANGING PART
+
+         M.save();
+            M.translate(p[0],p[1],0);
+            M.scale(sw-sr,sr/2,sr/2*1.01);
+	    drawMesh(cubeMesh, widgetType[n] == 'button' ? selected == n ? widgetColor[n] : 'black'
+	                                                 : selected == n ? 'white' : widgetValue[n] ? widgetColor[n] : 'black');
+         M.restore();
+
+	 break;
+      }
+   }
+
+   // DRAW THE BIG OBJECT IN THE SCENE
+
+   M.save();
+      M.scale(.3, .3 + .1 * bounce(T[2]) - .08 * bounce(T[3]), .3);
+      M.translate(0, 2 * bounce(T[2]) - .3 * bounce(T[3]), 0);
+      M.rotateY(T[0] * Math.PI/2);
+      M.rotateX(T[1] * Math.PI/2);
+      drawMesh(cubeMesh, 'white');
+   M.restore();
+
+   // DRAW THE LITTLE OBJECT IN THE SCENE
+
+   M.save();
+      M.translate(-.5 + .06 * wiggle(T[5]), -.3 + .5 * bounce(T[4]), .5);
+      M.scale(.1);
+      drawMesh(cubeMesh, 'red');
+   M.restore();
+}
+
+// HELPER FUNCTIONS FOR ANIMATION
+
+let bounce = t => Math.sin(Math.PI * t);
+let wiggle = t => Math.sin(6 * Math.PI * t);
+
+// DESCRIPTIONS OF ALL THE CONTROL WIDGETS
+
+let widgetType  = ['button', 'toggle', 'slider', 'slider', 'slider','slider'];
+let widgetColor = ['red', 'yellow', 'green', 'cyan', 'blue','magenta'];
+let widgetPos = [[-.8,.96],[-.8,.88],[-.8,.80],[-.8,.72],[-.8,.64],[-.8,.56]];
+let widgetValue = [0,0,0,0,0,0];
+let sr = 0.03;
+let sw = 0.2;
+let widgetChanged = -1;
+
+let cx = 0, cy = 0, selected = -1;
+
+// SET THE VALUE OF A WIDGET
+
+let setValue = state => {
+   if (selected >= 0)
+      switch (widgetType[selected]) {
+      case 'slider':
+         widgetValue[selected] = Math.max(sr-sw, Math.min(sw-sr, cx-widgetPos[selected][0]));
+	 break;
+      case 'toggle':
+         widgetValue[selected] = 1 - widgetValue[selected];
+	 break;
+      case 'button':
+         widgetValue[selected] = state;
+	 break;
+      }
+   widgetChanged = selected;
+}
+
+// FIND OUT WHICH WIDGET IS AT THE CURSOR
+
+let doHitTesting = () => {
+   let V = [ 0, 0, fl ],
+       W = normalize([ cx, cy, -fl ]);
+   selected = -1;
+   for (let n = 0 ; n < widgetValue.length ; n++) {
+      let p = widgetPos[n];
+      for (let x = -sw ; x <= sw ; x += .7*sr)
+         if (rayHitsSphere(V,W, [p[0]+x,p[1],0,sr])) {
+            selected = n;
+            if (widgetType[selected] == 'slider')
+               setValue(1);
+            return;
+         }
+   }
+}
+
+// RESPOND TO MOUSE EVENTS ON THE CANVAS
+
+canvas1.onPress = (x,y) => {
+   cx = x;
+   cy = y;
+   doHitTesting();
+}
+
+canvas1.onDrag = (x,y) => {
+   cx = x;
+   cy = y;
+   if (selected >= 0 && widgetType[selected] != 'toggle')
+      setValue(1);
+}
+
+canvas1.onRelease = (x,y) => {
+   cx = x;
+   cy = y;
+   setValue(0);
+   selected = -1;
+}
+
+canvas1.onMove = (x,y) => {
+   cx = x;
+   cy = y;
+   selected = -1;
+}
+
+// RECORD WHETHER ANY KEY IS PRESSED
+
+let isKeyPressed = false;
+canvas1.onKeyPress   = k => isKeyPressed = true;
+canvas1.onKeyRelease = k => isKeyPressed = false;
+
+// START EVERYTHING
+
+gl_start(canvas1, vs, fs);
+</script>
+
+
