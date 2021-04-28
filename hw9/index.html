@@ -78,16 +78,16 @@
 <!!-------- A PROPERLY DESCRIPTIVE TITLE -------->
 
 <script id='my_title' type='text/html'>
-ANIMATION SEQUENCES
+Selection Sort
 </script>
 
 
 <!!-------- HERE IS WHERE YOU CAN PROVIDE A LONGER TEXT DESCRIPTION -------->
 
-<script id='my_instructions' type='text/html'><font color=#b0b0b0>
-This is a simple example<br>
-of objects animating in<br>
-a sequence.
+<script id='my_instructions' type='text/html'>
+    <font color=#b0b0b0>
+        This is a simple example<br>of objects animating in<br>a sequence.
+    </font>
 </script>
 
 
@@ -334,7 +334,48 @@ function animate(gl) {
     const step = findStep(steps, time);
 
     if (step.animation) {
+        const items = step.items;
+        const n = items.length;
 
+        for (let i = 0; i < n; i ++) {
+            if (i === step.firstIndex || i === step.secondIndex)
+                continue;
+
+            const item = items[i];
+
+            const x = -0.7 + 1.4 * i / (n - 1);
+
+            M.save();
+                M.rotateX(Math.PI / 2)
+                M.translate(x, 0, 0);
+                M.scale(0.05, 0.05, item.length);
+                drawMesh(cylinderMesh, item.color);
+            M.restore();
+        }
+
+        const firstOriginalX = -0.7 + 1.4 * step.firstIndex / (n - 1);
+        const secondOriginalX = -0.7 + 1.4 * step.secondIndex / (n - 1);
+
+        const firstCurrentX = secondOriginalX + (firstOriginalX - secondOriginalX) / (step.to - step.from) * (time - step.from);
+        const secondCurrentX = firstOriginalX + (secondOriginalX - firstOriginalX) / (step.to - step.from) * (time - step.from);
+
+        let item = items[step.firstIndex];
+
+        M.save();
+            M.rotateX(Math.PI / 2)
+            M.translate(firstCurrentX, 0.1, 0);
+            M.scale(0.05, 0.05, item.length);
+            drawMesh(cylinderMesh, item.color);
+        M.restore();
+
+        item = items[step.secondIndex];
+
+        M.save();
+            M.rotateX(Math.PI / 2)
+            M.translate(secondCurrentX, 0.2, 0);
+            M.scale(0.05, 0.05, item.length);
+            drawMesh(cylinderMesh, item.color);
+        M.restore();
     } else {
         const items = step.items;
         const n = items.length;
@@ -441,8 +482,8 @@ let isKeyPressed = false;
 canvas1.onKeyPress   = k => isKeyPressed = true;
 canvas1.onKeyRelease = k => isKeyPressed = false;
 
-const timeBetweenSteps = 0.7;
-const timeDuringAnimations = 3;
+const timeBetweenSteps = 0.5;
+const timeDuringAnimations = 2;
 
 function main() {
     let nums = shuffle([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]);
@@ -456,17 +497,17 @@ function main() {
     for (let i = 0; i < n; i ++) {
         let minIndex = i;
 
-        steps.push(generateStillStep(nums, currentTime, currentTime + timeBetweenSteps, minIndex, "red"))
+        steps.push(generateStillStep(nums, currentTime, currentTime + timeBetweenSteps, minIndex, "red"));
         currentTime += timeBetweenSteps;
 
         for (let j = i + 1; j < n; j ++) {
-            steps.push(generateStillStep(nums, currentTime, currentTime + timeBetweenSteps, minIndex, "red", j, "blue"))
+            steps.push(generateStillStep(nums, currentTime, currentTime + timeBetweenSteps, i, "yellow", minIndex, "red", j, "blue"));
             currentTime += timeBetweenSteps;
 
             if (nums[j] < nums[minIndex]) {
                 minIndex = j;
 
-                steps.push(generateStillStep(nums, currentTime, currentTime + timeBetweenSteps, minIndex, "red"))
+                steps.push(generateStillStep(nums, currentTime, currentTime + timeBetweenSteps, i, "yellow", minIndex, "red"));
                 currentTime += timeBetweenSteps;
             }
         }
@@ -476,7 +517,11 @@ function main() {
             nums[i] = nums[minIndex];
             nums[minIndex] = temp;
 
-            steps.push(generateStillStep(nums, currentTime, currentTime + timeBetweenSteps))
+            const thisTimeDuringAnimations = timeDuringAnimations / n * Math.abs(minIndex - i);
+            steps.push(generateAnimationStep(nums, currentTime, currentTime + thisTimeDuringAnimations, i, minIndex));
+            currentTime += thisTimeDuringAnimations;
+
+            steps.push(generateStillStep(nums, currentTime, currentTime + timeBetweenSteps));
             currentTime += timeBetweenSteps;
         }
     }
@@ -487,7 +532,7 @@ function main() {
     return steps;
 }
 
-function generateStillStep(nums, from, to, firstIndex = -1, firstColor = "", secondIndex = -1, secondColor = "") {
+function generateStillStep(nums, from, to, firstIndex = -1, firstColor = "", secondIndex = -1, secondColor = "", thirdIndex = -1, thirdColor = "") {
     let step = {
         animation: false,
         from: from,
@@ -507,6 +552,32 @@ function generateStillStep(nums, from, to, firstIndex = -1, firstColor = "", sec
 
         if (i === secondIndex)
             color = secondColor;
+
+        if (i === thirdIndex)
+            color = thirdColor;
+
+        step.items.push({length: num, color: color});
+    }
+
+    return step;
+}
+
+function generateAnimationStep(nums, from, to, firstIndex, secondIndex) {
+    let step = {
+        animation: true,
+        from: from,
+        to: to,
+        items: [],
+        firstIndex: firstIndex,
+        secondIndex: secondIndex
+    };
+
+    const n = nums.length;
+
+    for (let i = 0; i < n; i ++) {
+        const num = nums[i];
+
+        let color = 'white';
 
         step.items.push({length: num, color: color});
     }
