@@ -263,73 +263,95 @@ function animate(gl) {
 
    // DRAW CONTROL WIDGETS
 
-   for (let n = 0 ; n < widgetValue.length ; n++) {
+   // for (let n = 0 ; n < widgetValue.length ; n++) {
+   //
+   //    let p = widgetPos[n];
+   //
+   //    switch (widgetType[n]) {
+   //    case 'slider':
+   //
+   //       // DRAW SLIDER FIXED PART
+   //
+   //       M.save();
+   //          M.translate(p[0],p[1],0);
+   //          M.rotateY(Math.PI/2);
+   //          M.scale(sr/2,sr/2,sw);
+   //          drawMesh(cylinderMesh, 'brass');
+   //       M.restore();
+   //
+   //       // DRAW SLIDER MOVING PART
+   //
+   //       M.save();
+   //          M.translate(p[0]+widgetValue[n],p[1],0);
+   //          M.scale(sr);
+   //          drawMesh(sphereMesh, selected == n ? 'white' : widgetColor[n]);
+   //       M.restore();
+   //
+	//  break;
+   //
+   //    case 'button':
+   //    case 'toggle':
+   //
+   //       // DRAW BUTTON FIXED PART
+   //
+   //       M.save();
+   //          M.translate(p[0],p[1],0);
+   //          M.scale(sw,sr,sr/2);
+	//     drawMesh(cubeMesh, 'brass');
+   //       M.restore();
+   //
+   //       // DRAW BUTTON CHANGING PART
+   //
+   //       M.save();
+   //          M.translate(p[0],p[1],0);
+   //          M.scale(sw-sr,sr/2,sr/2*1.01);
+	//     drawMesh(cubeMesh, widgetType[n] == 'button' ? selected == n ? widgetColor[n] : 'black'
+	//                                                  : selected == n ? 'white' : widgetValue[n] ? widgetColor[n] : 'black');
+   //       M.restore();
+   //
+	//  break;
+   //    }
+   // }
+   //
+   // // DRAW THE BIG OBJECT IN THE SCENE
+   //
+   // M.save();
+   //    M.scale(.3, .3 + .1 * bounce(T[2]) - .08 * bounce(T[3]), .3);
+   //    M.translate(0, 2 * bounce(T[2]) - .3 * bounce(T[3]), 0);
+   //    M.rotateY(T[0] * Math.PI/2);
+   //    M.rotateX(T[1] * Math.PI/2);
+   //    drawMesh(cubeMesh, 'white');
+   // M.restore();
+   //
+   // // DRAW THE LITTLE OBJECT IN THE SCENE
+   //
+   // M.save();
+   //    M.translate(-.5 + .06 * wiggle(T[5]), -.3 + .5 * bounce(T[4]), .5);
+   //    M.scale(.1);
+   //    drawMesh(cubeMesh, 'red');
+   // M.restore();
 
-      let p = widgetPos[n];
+    const step = findStep(steps, time);
 
-      switch (widgetType[n]) {
-      case 'slider':
+    if (step.animation) {
 
-         // DRAW SLIDER FIXED PART
+    } else {
+        const items = step.items;
+        const n = items.length;
 
-         M.save();
-            M.translate(p[0],p[1],0);
-            M.rotateY(Math.PI/2);
-            M.scale(sr/2,sr/2,sw);
-            drawMesh(cylinderMesh, 'brass');
-         M.restore();
+        for (let i = 0; i < n; i ++) {
+            const item = items[i];
 
-         // DRAW SLIDER MOVING PART
+            const x = -0.7 + 1.4 * i / (n - 1);
 
-         M.save();
-            M.translate(p[0]+widgetValue[n],p[1],0);
-            M.scale(sr);
-            drawMesh(sphereMesh, selected == n ? 'white' : widgetColor[n]);
-         M.restore();
-
-	 break;
-
-      case 'button':
-      case 'toggle':
-
-         // DRAW BUTTON FIXED PART
-
-         M.save();
-            M.translate(p[0],p[1],0);
-            M.scale(sw,sr,sr/2);
-	    drawMesh(cubeMesh, 'brass');
-         M.restore();
-
-         // DRAW BUTTON CHANGING PART
-
-         M.save();
-            M.translate(p[0],p[1],0);
-            M.scale(sw-sr,sr/2,sr/2*1.01);
-	    drawMesh(cubeMesh, widgetType[n] == 'button' ? selected == n ? widgetColor[n] : 'black'
-	                                                 : selected == n ? 'white' : widgetValue[n] ? widgetColor[n] : 'black');
-         M.restore();
-
-	 break;
-      }
-   }
-
-   // DRAW THE BIG OBJECT IN THE SCENE
-
-   M.save();
-      M.scale(.3, .3 + .1 * bounce(T[2]) - .08 * bounce(T[3]), .3);
-      M.translate(0, 2 * bounce(T[2]) - .3 * bounce(T[3]), 0);
-      M.rotateY(T[0] * Math.PI/2);
-      M.rotateX(T[1] * Math.PI/2);
-      drawMesh(cubeMesh, 'white');
-   M.restore();
-
-   // DRAW THE LITTLE OBJECT IN THE SCENE
-
-   M.save();
-      M.translate(-.5 + .06 * wiggle(T[5]), -.3 + .5 * bounce(T[4]), .5);
-      M.scale(.1);
-      drawMesh(cubeMesh, 'red');
-   M.restore();
+            M.save();
+                M.rotateX(Math.PI / 2)
+                M.translate(x, 0, 0);
+                M.scale(0.05, 0.05, item.length);
+                drawMesh(cylinderMesh, item.color);
+            M.restore();
+        }
+    }
 }
 
 // HELPER FUNCTIONS FOR ANIMATION
@@ -418,6 +440,115 @@ canvas1.onMove = (x,y) => {
 let isKeyPressed = false;
 canvas1.onKeyPress   = k => isKeyPressed = true;
 canvas1.onKeyRelease = k => isKeyPressed = false;
+
+const timeBetweenSteps = 0.7;
+const timeDuringAnimations = 3;
+
+function main() {
+    let nums = shuffle([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]);
+    let n = nums.length;
+    let steps = [];
+    let currentTime = 0
+
+    steps.push(generateStillStep(nums, 0, timeBetweenSteps));
+    currentTime = timeBetweenSteps;
+
+    for (let i = 0; i < n; i ++) {
+        let minIndex = i;
+
+        steps.push(generateStillStep(nums, currentTime, currentTime + timeBetweenSteps, minIndex, "red"))
+        currentTime += timeBetweenSteps;
+
+        for (let j = i + 1; j < n; j ++) {
+            steps.push(generateStillStep(nums, currentTime, currentTime + timeBetweenSteps, minIndex, "red", j, "blue"))
+            currentTime += timeBetweenSteps;
+
+            if (nums[j] < nums[minIndex]) {
+                minIndex = j;
+
+                steps.push(generateStillStep(nums, currentTime, currentTime + timeBetweenSteps, minIndex, "red"))
+                currentTime += timeBetweenSteps;
+            }
+        }
+
+        if (minIndex !== i) {
+            const temp = nums[i];
+            nums[i] = nums[minIndex];
+            nums[minIndex] = temp;
+
+            steps.push(generateStillStep(nums, currentTime, currentTime + timeBetweenSteps))
+            currentTime += timeBetweenSteps;
+        }
+    }
+
+    steps.push(generateStillStep(nums, currentTime, currentTime + timeBetweenSteps));
+    currentTime += timeBetweenSteps;
+
+    return steps;
+}
+
+function generateStillStep(nums, from, to, firstIndex = -1, firstColor = "", secondIndex = -1, secondColor = "") {
+    let step = {
+        animation: false,
+        from: from,
+        to: to,
+        items: []
+    };
+
+    const n = nums.length;
+
+    for (let i = 0; i < n; i ++) {
+        const num = nums[i];
+
+        let color = 'white';
+
+        if (i === firstIndex)
+            color = firstColor;
+
+        if (i === secondIndex)
+            color = secondColor;
+
+        step.items.push({length: num, color: color});
+    }
+
+    return step;
+}
+
+let steps = main();
+
+console.log(steps)
+
+// http://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
+function shuffle(array) {
+    var currentIndex = array.length
+        , temporaryValue
+        , randomIndex
+    ;
+
+    // While there remain elements to shuffle...
+    while (0 !== currentIndex) {
+
+        // Pick a remaining element...
+        randomIndex = Math.floor(Math.random() * currentIndex);
+        currentIndex -= 1;
+
+        // And swap it with the current element.
+        temporaryValue = array[currentIndex];
+        array[currentIndex] = array[randomIndex];
+        array[randomIndex] = temporaryValue;
+    }
+
+    return array;
+}
+
+function findStep(steps, time) {
+    for (const step of steps) {
+        if (step.from < time && step.to >= time)
+            return step;
+    }
+
+    return steps[steps.length - 1];
+}
 
 // START EVERYTHING
 
