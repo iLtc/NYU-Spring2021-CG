@@ -174,38 +174,6 @@ let rayHitsSphere = (V, W, S) => {
    return d > 0;
 }
 
-let lerp = (a,b,t) => a + t * (b - a); // LINEAR INTERPOLATION
-
-let N = 0; // GREATER N INCREASES "NERVOUSNESS" OF BIG OBJECT
-
-// TIMING TABLE FOR THE ANIMATION SEQUENCE
-
-let timing = [
-   [0, lerp(1,.5,N)],
-   [1.8, lerp(2.3,2.1,N)], 
-   [lerp(2,2.5,N), 2.8],
-   [2.0, 3.2],
-   [3.4, 3.9],
-   [4.3, 5.0],
-];
-
-// EASE CURVE TO ACCELERATE FROM REST AND THEN DECELERATE TO REST
-
-let sCurve = t => (3 - 2 * t) * t * t;
-
-// EVALUATE THE TIMING OF ONE ANIMATION PARAMETER FOR THIS FRAME
-
-let evalTiming = n => {
-   let t0 = timing[n][0];
-   let t1 = timing[n][1];
-
-   if (animationTime < t0)
-      return 0;
-   if (animationTime > t1)
-      return 1;
-   return sCurve((animationTime - t0) / (t1 - t0));
-}
-
 // CONVERT BETWEEN SLIDER POSITION AND VALUE RANGE BETWEEN 0.0 AND 1.0
 
 let sliderToT = s => Math.max(0, 10 * (sw/2 + s));
@@ -221,28 +189,30 @@ function animate(gl) {
 
    // COMPUTE animationTime FOR THIS FRAME
 
-   switch (widgetChanged) {
-   case 0:
-      animationTime = 0;
-      widgetValue[2] = sr-sw;
-      break;
-   case 1:
-      if (widgetValue[1]) {
-         animationTime += time - prevTime;
-         widgetValue[2] = tToSlider(animationTime);
-      }
-      break;
-   case 2:
-      animationTime = sliderToT(widgetValue[2]);
-      break;
-   }
-   prevTime = time;
+    switch (widgetChanged) {
+        case 0:
+            steps = main();
+            animationTime = 0;
+            widgetValue[2] = sr-sw;
+            widgetChanged = -1;
+            widgetValue[1] = 0;
+            break;
+        case 1:
+            if (widgetValue[1]) {
+            animationTime += time - prevTime;
+            widgetValue[2] = tToSlider(animationTime);
+            }
+            break;
+        case 2:
+            animationTime = sliderToT(widgetValue[2]);
+            break;
+    }
+    prevTime = time;
 
-   // EVALUATE ALL ANIMATION TIMING PARAMETERS
-
-   let T = [];
-   for (let i = 0 ; i < timing.length ; i++)
-      T[i] = evalTiming(i);
+    if (animationTime > steps[steps.length - 1].to) {
+        widgetChanged = -1;
+        widgetValue[1] = 0;
+    }
 
    // SET ANIMATION TIME IN FRAGMENT SHADER
 
@@ -263,77 +233,62 @@ function animate(gl) {
 
    // DRAW CONTROL WIDGETS
 
-   // for (let n = 0 ; n < widgetValue.length ; n++) {
-   //
-   //    let p = widgetPos[n];
-   //
-   //    switch (widgetType[n]) {
-   //    case 'slider':
-   //
-   //       // DRAW SLIDER FIXED PART
-   //
-   //       M.save();
-   //          M.translate(p[0],p[1],0);
-   //          M.rotateY(Math.PI/2);
-   //          M.scale(sr/2,sr/2,sw);
-   //          drawMesh(cylinderMesh, 'brass');
-   //       M.restore();
-   //
-   //       // DRAW SLIDER MOVING PART
-   //
-   //       M.save();
-   //          M.translate(p[0]+widgetValue[n],p[1],0);
-   //          M.scale(sr);
-   //          drawMesh(sphereMesh, selected == n ? 'white' : widgetColor[n]);
-   //       M.restore();
-   //
-	//  break;
-   //
-   //    case 'button':
-   //    case 'toggle':
-   //
-   //       // DRAW BUTTON FIXED PART
-   //
-   //       M.save();
-   //          M.translate(p[0],p[1],0);
-   //          M.scale(sw,sr,sr/2);
-	//     drawMesh(cubeMesh, 'brass');
-   //       M.restore();
-   //
-   //       // DRAW BUTTON CHANGING PART
-   //
-   //       M.save();
-   //          M.translate(p[0],p[1],0);
-   //          M.scale(sw-sr,sr/2,sr/2*1.01);
-	//     drawMesh(cubeMesh, widgetType[n] == 'button' ? selected == n ? widgetColor[n] : 'black'
-	//                                                  : selected == n ? 'white' : widgetValue[n] ? widgetColor[n] : 'black');
-   //       M.restore();
-   //
-	//  break;
-   //    }
-   // }
-   //
-   // // DRAW THE BIG OBJECT IN THE SCENE
-   //
-   // M.save();
-   //    M.scale(.3, .3 + .1 * bounce(T[2]) - .08 * bounce(T[3]), .3);
-   //    M.translate(0, 2 * bounce(T[2]) - .3 * bounce(T[3]), 0);
-   //    M.rotateY(T[0] * Math.PI/2);
-   //    M.rotateX(T[1] * Math.PI/2);
-   //    drawMesh(cubeMesh, 'white');
-   // M.restore();
-   //
-   // // DRAW THE LITTLE OBJECT IN THE SCENE
-   //
-   // M.save();
-   //    M.translate(-.5 + .06 * wiggle(T[5]), -.3 + .5 * bounce(T[4]), .5);
-   //    M.scale(.1);
-   //    drawMesh(cubeMesh, 'red');
-   // M.restore();
+   for (let n = 0 ; n < widgetValue.length ; n++) {
 
-    const step = findStep(steps, time);
+      let p = widgetPos[n];
+
+      switch (widgetType[n]) {
+      case 'slider':
+
+         // DRAW SLIDER FIXED PART
+
+         M.save();
+            M.translate(p[0],p[1],0);
+            M.rotateY(Math.PI/2);
+            M.scale(sr/2,sr/2,sw);
+            drawMesh(cylinderMesh, 'brass');
+         M.restore();
+
+         // DRAW SLIDER MOVING PART
+
+         M.save();
+            M.translate(p[0]+widgetValue[n],p[1],0);
+            M.scale(sr);
+            drawMesh(sphereMesh, selected === n ? 'white' : widgetColor[n]);
+         M.restore();
+
+	 break;
+
+      case 'button':
+      case 'toggle':
+
+         // DRAW BUTTON FIXED PART
+
+         M.save();
+            M.translate(p[0],p[1],0);
+            M.scale(sw,sr,sr/2);
+	    drawMesh(cubeMesh, 'brass');
+         M.restore();
+
+         // DRAW BUTTON CHANGING PART
+
+         M.save();
+            M.translate(p[0],p[1],0);
+            M.scale(sw-sr,sr/2,sr/2*1.01);
+	    drawMesh(cubeMesh, widgetType[n] === 'button' ? selected === n ? widgetColor[n] : 'black'
+	                                                 : selected === n ? 'white' : widgetValue[n] ? widgetColor[n] : 'black');
+         M.restore();
+
+	 break;
+      }
+   }
+
+    // Draw Sorting Steps
+
+    const step = animationTime === 0 ? steps[0] : findStep(steps, animationTime);
 
     if (step.animation) {
+        // The animation for moving items
         const items = step.items;
         const n = items.length;
 
@@ -356,8 +311,8 @@ function animate(gl) {
         const firstOriginalX = -0.7 + 1.4 * step.firstIndex / (n - 1);
         const secondOriginalX = -0.7 + 1.4 * step.secondIndex / (n - 1);
 
-        const firstCurrentX = secondOriginalX + (firstOriginalX - secondOriginalX) / (step.to - step.from) * (time - step.from);
-        const secondCurrentX = firstOriginalX + (secondOriginalX - firstOriginalX) / (step.to - step.from) * (time - step.from);
+        const firstCurrentX = secondOriginalX + (firstOriginalX - secondOriginalX) / (step.to - step.from) * (animationTime - step.from);
+        const secondCurrentX = firstOriginalX + (secondOriginalX - firstOriginalX) / (step.to - step.from) * (animationTime - step.from);
 
         let item = items[step.firstIndex];
 
@@ -365,7 +320,7 @@ function animate(gl) {
             M.rotateX(Math.PI / 2)
             M.translate(firstCurrentX, 0.1, 0);
             M.scale(0.05, 0.05, item.length);
-            drawMesh(cylinderMesh, item.color);
+            drawMesh(cylinderMesh, 'red');
         M.restore();
 
         item = items[step.secondIndex];
@@ -374,9 +329,10 @@ function animate(gl) {
             M.rotateX(Math.PI / 2)
             M.translate(secondCurrentX, 0.2, 0);
             M.scale(0.05, 0.05, item.length);
-            drawMesh(cylinderMesh, item.color);
+            drawMesh(cylinderMesh, 'yellow');
         M.restore();
     } else {
+        // The step without animation
         const items = step.items;
         const n = items.length;
 
@@ -402,10 +358,10 @@ let wiggle = t => Math.sin(6 * Math.PI * t);
 
 // DESCRIPTIONS OF ALL THE CONTROL WIDGETS
 
-let widgetType  = ['button', 'toggle', 'slider', 'slider', 'slider','slider'];
-let widgetColor = ['red', 'yellow', 'green', 'cyan', 'blue','magenta'];
-let widgetPos = [[-.8,.96],[-.8,.88],[-.8,.80],[-.8,.72],[-.8,.64],[-.8,.56]];
-let widgetValue = [0,0,0,0,0,0];
+let widgetType  = ['button', 'toggle'];
+let widgetColor = ['red', 'yellow'];
+let widgetPos = [[-.8,.96],[-.8,.88]];
+let widgetValue = [0,0];
 let sr = 0.03;
 let sw = 0.2;
 let widgetChanged = -1;
@@ -441,7 +397,7 @@ let doHitTesting = () => {
       for (let x = -sw ; x <= sw ; x += .7*sr)
          if (rayHitsSphere(V,W, [p[0]+x,p[1],0,sr])) {
             selected = n;
-            if (widgetType[selected] == 'slider')
+            if (widgetType[selected] === 'slider')
                setValue(1);
             return;
          }
@@ -459,7 +415,7 @@ canvas1.onPress = (x,y) => {
 canvas1.onDrag = (x,y) => {
    cx = x;
    cy = y;
-   if (selected >= 0 && widgetType[selected] != 'toggle')
+   if (selected >= 0 && widgetType[selected] !== 'toggle')
       setValue(1);
 }
 
