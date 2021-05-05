@@ -285,7 +285,8 @@ function animate(gl) {
     );
 
    M.save();
-      drawMesh(implicitSurfaceMesh, 'cyan', true);
+      M.translate(0, 0, Math.sin(time) * 0.3);
+      drawMesh(implicitSurfaceMesh, 'red', true);
    M.restore();
 }
 
