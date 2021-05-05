@@ -85,10 +85,10 @@ IMPLICIT SURFACES
 
 <!!-------- HERE IS WHERE YOU CAN PROVIDE A LONGER TEXT DESCRIPTION -------->
 
-<script id='my_instructions' type='text/html'><font color=#b0b0b0>
-This is a simple example<br>
-of of an implicit surface<br>
-a sequence.
+<script id='my_instructions' type='text/html'>
+    <font color=#b0b0b0>
+    This is a hand.
+    </font>
 </script>
 
 
@@ -274,22 +274,22 @@ function animate(gl) {
       }
    }
 
-   let a = .5 + widgetValue[0] / .34;
-   let b = .5 + widgetValue[1] / .34;
-   let c = .5 + widgetValue[2] / .34;
+   x = widgetValue[0] / .34;
+   y = widgetValue[1] / .34;
+   r = widgetValue[2] / .34 + 0.5;
 
-   let rate = .25 + a;
-   let stretch = .2 + .3 * b;
-   let divs = Math.floor(5 + c * 40);
+    let implicitSurfaceMesh = implicitSurfaceTriangleMesh(
+        implicitFunction,
+        50,
+        [x, y, z, r]
+    );
 
    M.save();
-      let implicitSurfaceMesh = implicitSurfaceTriangleMesh(implicitFunction, divs,
-         [stretch * Math.sin(3*time*rate),
-	  stretch * Math.sin(4*time*rate),
-	  stretch * Math.sin(5*time*rate)/2] );
       drawMesh(implicitSurfaceMesh, 'cyan', true);
    M.restore();
 }
+
+let x = 0, y = -0.5, z = 0, r = 0.1;
 
 let blob = (center, radius, x, y, z) => {
    x -= center[0];
@@ -298,13 +298,74 @@ let blob = (center, radius, x, y, z) => {
    return Math.max(0, 1 - .16 * (x*x + y*y + z*z) / (radius * radius));
 }
 
+let blobs = [
+    [-0.5, 0, 0, 0.05], // thumb
+    [-0.45, -0.05, 0, 0.05],
+    [-0.4, -0.1, 0, 0.05],
+    [-0.35, -0.15, 0, 0.05],
+    [-0.25, 0.45, 0, 0.05], // index finger
+    [-0.24, 0.4, 0, 0.05],
+    [-0.23, 0.35, 0, 0.05],
+    [-0.22, 0.3, 0, 0.05],
+    [-0.21, 0.25, 0, 0.05],
+    [-0.20, 0.2, 0, 0.05],
+    [-0.19, 0.15, 0, 0.05],
+    [-0.18, 0.1, 0, 0.05],
+    [0, 0.5, 0, 0.05], // middle finger
+    [0, 0.45, 0, 0.05],
+    [0, 0.4, 0, 0.05],
+    [0, 0.35, 0, 0.05],
+    [0, 0.3, 0, 0.05],
+    [0, 0.25, 0, 0.05],
+    [0, 0.2, 0, 0.05],
+    [0, 0.15, 0, 0.05],
+    [0, 0.1, 0, 0.05],
+    [0.25, 0.45, 0, 0.05], // ring finger
+    [0.24, 0.4, 0, 0.05],
+    [0.23, 0.35, 0, 0.05],
+    [0.22, 0.3, 0, 0.05],
+    [0.21, 0.25, 0, 0.05],
+    [0.20, 0.2, 0, 0.05],
+    [0.19, 0.15, 0, 0.05],
+    [0.18, 0.1, 0, 0.05],
+    [0.45, 0.3, 0, 0.05], // little finger
+    [0.42, 0.23, 0, 0.05],
+    [0.39, 0.16, 0, 0.05],
+    [0.36, 0.09, 0, 0.05],
+    [0.33, 0.02, 0, 0.05],
+    [-0.15, 0, 0, 0.075], // palm
+    [0, 0, 0, 0.075],
+    [0.15, 0, 0, 0.075],
+    [-0.15, -0.1, 0, 0.075],
+    [0, -0.1, 0, 0.075],
+    [0.15, -0.1, 0, 0.075],
+    [0.3, -0.1, 0, 0.075],
+    [-0.3, -0.175, 0, 0.06],
+    [-0.15, -0.2, 0, 0.075],
+    [0, -0.2, 0, 0.075],
+    [0.12, -0.2, 0, 0.075],
+    [0.25, -0.2, 0, 0.075],
+    [-0.3, -0.25, 0, 0.06],
+    [-0.15, -0.3, 0, 0.075],
+    [0, -0.3, 0, 0.075],
+    [0.1, -0.3, 0, 0.075],
+    [0.2, -0.3, 0, 0.075],
+    [-0.25, -0.35, 0, 0.06],
+    [-0.15, -0.4, 0, 0.075],
+    [0, -0.4, 0, 0.075],
+    [0.07, -0.4, 0, 0.075],
+    [0.15, -0.4, 0, 0.075],
+];
 
 let implicitFunction = (x,y,z,args) => {
-   let a = blob( [args[0], 0, 0], 0.28, x,y,z );
-   let b = blob( [0, args[1], 0], 0.28, x,y,z );
-   let c = blob( [0, 0, args[2]], 0.28, x,y,z );
+    let result = 0;
 
-   return a*a*a*a + b*b*b*b + c*c*c*c - 0.5;
+    for (const arg of blobs) {
+        const value = blob([arg[0], arg[1], arg[2]], arg[3], x, y, z);
+        result += Math.pow(value, 4);
+    }
+
+    return result - 0.5;
 }
 
 // HELPER FUNCTIONS FOR ANIMATION
@@ -317,7 +378,7 @@ let wiggle = t => Math.sin(6 * Math.PI * t);
 let widgetType  = ['slider', 'slider', 'slider'];
 let widgetColor = ['red', 'green', 'blue'];
 let widgetPos = [[-.8,.96],[-.8,.88],[-.8,.80]];
-let widgetValue = [0,0,0];
+let widgetValue = [];
 let sr = 0.03;
 let sw = 0.2;
 let widgetChanged = -1;
