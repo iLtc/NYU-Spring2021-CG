@@ -7,23 +7,38 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
     <title>Hello, world!</title>
+
+    <style>
+        canvas {
+            padding: 0;
+            margin: auto;
+            display: block;
+            width: 800px;
+            height: 800px;
+            border:3px solid #f8f9fa;
+        }
+    </style>
 </head>
-<body style="background-color: black; color: white; ">
+<body class="bg-dark">
 <script src=final.js></script>
 <script src=math.js></script>
 <script src=matrix.js></script>
 <script src=geometry.js></script>
 
-<div style="text-align: center;"><span style="font-size: xx-large; color: #b0b0b0; ">Selection Sort</span></div>
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark" style="margin-bottom: 20px;">
+    <div class="container-fluid">
+        <span class="navbar-brand mb-0 h1">Brick Breaker</span>
+    </div>
+</nav>
 
-<canvas id='canvas1' width=800 height=800></canvas>
+<canvas id='canvas1' width="800" height="800"></canvas>
 
-<span style="font-size: large; ">
+<!--<span style="font-size: large; ">
     The first button shuffles the list. The second button starts or pauses the animation.
-</span>
+</span>-->
 
-<div id="errorMessage"></div>
-<div id=errorMarker></div>
+<div id="errorMessage" style="display: none"></div>
+<div id=errorMarker style="display: none"></div>
 
 <!!-------- VERTEX SHADER -------->
 
@@ -136,45 +151,13 @@
         return d > 0;
     }
 
-    // CONVERT BETWEEN SLIDER POSITION AND VALUE RANGE BETWEEN 0.0 AND 1.0
-
-    let sliderToT = s => Math.max(0, 10 * (sw/2 + s));
-    let tToSlider = t => Math.max(sr-sw, Math.min(sw-sr, t / 10 - sw/2));
-
-    let animationTime = 0, animationRunning = false, prevTime = 0;
-
     //----------- ANIMATE EACH FRAME
 
     function animate(gl) {
-
         let time = (Date.now() - startTime) / 1000;
 
-        // COMPUTE animationTime FOR THIS FRAME
-
-        switch (widgetChanged) {
-            case 0:
-                steps = main();
-                animationTime = 0;
-                widgetValue[2] = sr-sw;
-                widgetChanged = -1;
-                widgetValue[1] = 0;
-                break;
-            case 1:
-                if (widgetValue[1]) {
-                    animationTime += time - prevTime;
-                    widgetValue[2] = tToSlider(animationTime);
-                }
-                break;
-            case 2:
-                animationTime = sliderToT(widgetValue[2]);
-                break;
-        }
-        prevTime = time;
-
-        if (animationTime > steps[steps.length - 1].to) {
-            widgetChanged = -1;
-            widgetValue[1] = 0;
-        }
+        ball.next_frame();
+        paddle.next_frame();
 
         // SET ANIMATION TIME IN FRAGMENT SHADER
 
@@ -193,351 +176,91 @@
 
         setUniform('Matrix4fv', 'uCamera', false, matrix_perspective(3));
 
-        // DRAW CONTROL WIDGETS
+        ball.draw();
+        paddle.draw();
+    }
 
-        for (let n = 0 ; n < widgetValue.length ; n++) {
+    class Ball {
+        x = 0;
+        y = -5;
 
-            let p = widgetPos[n];
+        speedX = 0.4;
+        speedY = 0.4;
 
-            switch (widgetType[n]) {
-                case 'slider':
+        next_frame() {
+            this.x += this.speedX;
+            this.y += this.speedY;
 
-                    // DRAW SLIDER FIXED PART
+            if (Math.abs(this.x) > 24)
+                this.speedX = -this.speedX;
 
-                    M.save();
-                    M.translate(p[0],p[1],0);
-                    M.rotateY(Math.PI/2);
-                    M.scale(sr/2,sr/2,sw);
-                    drawMesh(cylinderMesh, 'brass');
-                    M.restore();
-
-                    // DRAW SLIDER MOVING PART
-
-                    M.save();
-                    M.translate(p[0]+widgetValue[n],p[1],0);
-                    M.scale(sr);
-                    drawMesh(sphereMesh, selected === n ? 'white' : widgetColor[n]);
-                    M.restore();
-
-                    break;
-
-                case 'button':
-                case 'toggle':
-
-                    // DRAW BUTTON FIXED PART
-
-                    M.save();
-                    M.translate(p[0],p[1],0);
-                    M.scale(sw,sr,sr/2);
-                    drawMesh(cubeMesh, 'brass');
-                    M.restore();
-
-                    // DRAW BUTTON CHANGING PART
-
-                    M.save();
-                    M.translate(p[0],p[1],0);
-                    M.scale(sw-sr,sr/2,sr/2*1.01);
-                    drawMesh(cubeMesh, widgetType[n] === 'button' ? selected === n ? widgetColor[n] : 'black'
-                        : selected === n ? 'white' : widgetValue[n] ? widgetColor[n] : 'black');
-                    M.restore();
-
-                    break;
-            }
+            if (Math.abs(this.y) > 24)
+                this.speedY = -this.speedY
         }
 
-        // Draw Sorting Steps
-
-        const step = animationTime === 0 ? steps[0] : findStep(steps, animationTime);
-
-        if (step.animation) {
-            // The animation for moving items
-            const items = step.items;
-            const n = items.length;
-
-            for (let i = 0; i < n; i ++) {
-                if (i === step.firstIndex || i === step.secondIndex)
-                    continue;
-
-                const item = items[i];
-
-                const x = -0.7 + 1.4 * i / (n - 1);
-
-                M.save();
-                M.rotateX(Math.PI / 2)
-                M.translate(x, 0, 0);
-                M.scale(0.05, 0.05, item.length);
-                drawMesh(cylinderMesh, item.color);
-                M.restore();
-            }
-
-            const firstOriginalX = -0.7 + 1.4 * step.firstIndex / (n - 1);
-            const secondOriginalX = -0.7 + 1.4 * step.secondIndex / (n - 1);
-
-            const firstCurrentX = secondOriginalX + (firstOriginalX - secondOriginalX) / (step.to - step.from) * (animationTime - step.from);
-            const secondCurrentX = firstOriginalX + (secondOriginalX - firstOriginalX) / (step.to - step.from) * (animationTime - step.from);
-
-            let item = items[step.firstIndex];
-
-            M.save();
-            M.rotateX(Math.PI / 2)
-            M.translate(firstCurrentX, 0.1, 0);
-            M.scale(0.05, 0.05, item.length);
-            drawMesh(cylinderMesh, 'red');
+        draw() {
+            M.save()
+            M.scale(0.04)
+            M.translate(this.x, this.y, 0)
+            drawMesh(sphereMesh, 'white')
             M.restore();
+        }
+    }
 
-            item = items[step.secondIndex];
+    class Paddle {
+        x = 0;
+        y = -45;
 
-            M.save();
-            M.rotateX(Math.PI / 2)
-            M.translate(secondCurrentX, 0.2, 0);
-            M.scale(0.05, 0.05, item.length);
-            drawMesh(cylinderMesh, 'yellow');
+        speedX = 0;
+
+        move_left() {
+            this.speedX = -0.5;
+        }
+
+        move_right() {
+            this.speedX = 0.5;
+        }
+
+        stop() {
+            this.speedX = 0;
+        }
+
+        next_frame() {
+            this.x += this.speedX;
+
+            if (this.x < -9)
+                this.x = -9;
+
+            if (this.x > 9)
+                this.x = 9;
+        }
+
+        draw() {
+            M.save()
+            M.scale(0.1, 0.02, 0.02)
+            M.translate(this.x, this.y, 0)
+            drawMesh(squareMesh, 'red')
             M.restore();
-        } else {
-            // The step without animation
-            const items = step.items;
-            const n = items.length;
-
-            for (let i = 0; i < n; i ++) {
-                const item = items[i];
-
-                const x = -0.7 + 1.4 * i / (n - 1);
-
-                M.save();
-                M.rotateX(Math.PI / 2)
-                M.translate(x, 0, 0);
-                M.scale(0.05, 0.05, item.length);
-                drawMesh(cylinderMesh, item.color);
-                M.restore();
-            }
         }
     }
 
-    // HELPER FUNCTIONS FOR ANIMATION
-
-    let bounce = t => Math.sin(Math.PI * t);
-    let wiggle = t => Math.sin(6 * Math.PI * t);
-
-    // DESCRIPTIONS OF ALL THE CONTROL WIDGETS
-
-    let widgetType  = ['button', 'toggle'];
-    let widgetColor = ['red', 'yellow'];
-    let widgetPos = [[-.8,.96],[-.8,.88]];
-    let widgetValue = [0,0];
-    let sr = 0.03;
-    let sw = 0.2;
-    let widgetChanged = -1;
-
-    let cx = 0, cy = 0, selected = -1;
-
-    // SET THE VALUE OF A WIDGET
-
-    let setValue = state => {
-        if (selected >= 0)
-            switch (widgetType[selected]) {
-                case 'slider':
-                    widgetValue[selected] = Math.max(sr-sw, Math.min(sw-sr, cx-widgetPos[selected][0]));
-                    break;
-                case 'toggle':
-                    widgetValue[selected] = 1 - widgetValue[selected];
-                    break;
-                case 'button':
-                    widgetValue[selected] = state;
-                    break;
-            }
-        widgetChanged = selected;
-    }
-
-    // FIND OUT WHICH WIDGET IS AT THE CURSOR
-
-    let doHitTesting = () => {
-        let V = [ 0, 0, fl ],
-            W = normalize([ cx, cy, -fl ]);
-        selected = -1;
-        for (let n = 0 ; n < widgetValue.length ; n++) {
-            let p = widgetPos[n];
-            for (let x = -sw ; x <= sw ; x += .7*sr)
-                if (rayHitsSphere(V,W, [p[0]+x,p[1],0,sr])) {
-                    selected = n;
-                    if (widgetType[selected] === 'slider')
-                        setValue(1);
-                    return;
-                }
-        }
-    }
-
-    // RESPOND TO MOUSE EVENTS ON THE CANVAS
-
-    canvas1.onPress = (x,y) => {
-        cx = x;
-        cy = y;
-        doHitTesting();
-    }
-
-    canvas1.onDrag = (x,y) => {
-        cx = x;
-        cy = y;
-        if (selected >= 0 && widgetType[selected] !== 'toggle')
-            setValue(1);
-    }
-
-    canvas1.onRelease = (x,y) => {
-        cx = x;
-        cy = y;
-        setValue(0);
-        selected = -1;
-    }
-
-    canvas1.onMove = (x,y) => {
-        cx = x;
-        cy = y;
-        selected = -1;
-    }
+    const ball = new Ball();
+    const paddle = new Paddle();
 
     // RECORD WHETHER ANY KEY IS PRESSED
 
-    let isKeyPressed = false;
-    canvas1.onKeyPress   = k => isKeyPressed = true;
-    canvas1.onKeyRelease = k => isKeyPressed = false;
+    canvas1.onKeyPress   = k => {
+        if (k === 37)
+            paddle.move_left();
 
-    const timeBetweenSteps = 0.5;
-    const timeDuringAnimations = 2;
+        else if (k === 39)
+            paddle.move_right();
 
-    function main() {
-        let nums = shuffle([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]);
-        let n = nums.length;
-        let steps = [];
-        let currentTime = 0
-
-        steps.push(generateStillStep(nums, 0, timeBetweenSteps));
-        currentTime = timeBetweenSteps;
-
-        for (let i = 0; i < n; i ++) {
-            let minIndex = i;
-
-            steps.push(generateStillStep(nums, currentTime, currentTime + timeBetweenSteps, minIndex, "red"));
-            currentTime += timeBetweenSteps;
-
-            for (let j = i + 1; j < n; j ++) {
-                steps.push(generateStillStep(nums, currentTime, currentTime + timeBetweenSteps, i, "yellow", minIndex, "red", j, "blue"));
-                currentTime += timeBetweenSteps;
-
-                if (nums[j] < nums[minIndex]) {
-                    minIndex = j;
-
-                    steps.push(generateStillStep(nums, currentTime, currentTime + timeBetweenSteps, i, "yellow", minIndex, "red"));
-                    currentTime += timeBetweenSteps;
-                }
-            }
-
-            if (minIndex !== i) {
-                const temp = nums[i];
-                nums[i] = nums[minIndex];
-                nums[minIndex] = temp;
-
-                const thisTimeDuringAnimations = timeDuringAnimations / n * Math.abs(minIndex - i);
-                steps.push(generateAnimationStep(nums, currentTime, currentTime + thisTimeDuringAnimations, i, minIndex));
-                currentTime += thisTimeDuringAnimations;
-
-                steps.push(generateStillStep(nums, currentTime, currentTime + timeBetweenSteps));
-                currentTime += timeBetweenSteps;
-            }
-        }
-
-        steps.push(generateStillStep(nums, currentTime, currentTime + timeBetweenSteps));
-        currentTime += timeBetweenSteps;
-
-        return steps;
+        else
+            paddle.stop();
     }
 
-    function generateStillStep(nums, from, to, firstIndex = -1, firstColor = "", secondIndex = -1, secondColor = "", thirdIndex = -1, thirdColor = "") {
-        let step = {
-            animation: false,
-            from: from,
-            to: to,
-            items: []
-        };
-
-        const n = nums.length;
-
-        for (let i = 0; i < n; i ++) {
-            const num = nums[i];
-
-            let color = 'white';
-
-            if (i === firstIndex)
-                color = firstColor;
-
-            if (i === secondIndex)
-                color = secondColor;
-
-            if (i === thirdIndex)
-                color = thirdColor;
-
-            step.items.push({length: num, color: color});
-        }
-
-        return step;
-    }
-
-    function generateAnimationStep(nums, from, to, firstIndex, secondIndex) {
-        let step = {
-            animation: true,
-            from: from,
-            to: to,
-            items: [],
-            firstIndex: firstIndex,
-            secondIndex: secondIndex
-        };
-
-        const n = nums.length;
-
-        for (let i = 0; i < n; i ++) {
-            const num = nums[i];
-
-            let color = 'white';
-
-            step.items.push({length: num, color: color});
-        }
-
-        return step;
-    }
-
-    let steps = main();
-
-    console.log(steps)
-
-    // http://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
-    function shuffle(array) {
-        var currentIndex = array.length
-            , temporaryValue
-            , randomIndex
-        ;
-
-        // While there remain elements to shuffle...
-        while (0 !== currentIndex) {
-
-            // Pick a remaining element...
-            randomIndex = Math.floor(Math.random() * currentIndex);
-            currentIndex -= 1;
-
-            // And swap it with the current element.
-            temporaryValue = array[currentIndex];
-            array[currentIndex] = array[randomIndex];
-            array[randomIndex] = temporaryValue;
-        }
-
-        return array;
-    }
-
-    function findStep(steps, time) {
-        for (const step of steps) {
-            if (step.from < time && step.to >= time)
-                return step;
-        }
-
-        return steps[steps.length - 1];
-    }
+    canvas1.onKeyRelease = k => paddle.stop();
 
     // START EVERYTHING
 
