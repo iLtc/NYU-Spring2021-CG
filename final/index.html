@@ -161,6 +161,13 @@
 
         ball.hit_detection(paddle);
 
+        for (const brick of bricks) {
+            if (brick.destroyed)
+                continue;
+
+            ball.hit_detection(brick);
+        }
+
         // SET ANIMATION TIME IN FRAGMENT SHADER
 
         setUniform('1f', 'uTime', time);
@@ -180,32 +187,57 @@
 
         ball.draw();
         paddle.draw();
+
+        for (const brick of bricks)
+            brick.draw();
     }
 
     class Ball {
+        static scale = 30
+
         x = 0;
         y = -5;
 
         speedX = 0.4;
         speedY = 0.4;
 
-        scale = 25
-
         hit_detection(other) {
             if (other instanceof Paddle) {
                 // Horizontal
                 if (
-                    this.x / this.scale > (other.x - 1) / other.scaleX
-                    && this.x / this.scale < (other.x + 1) / other.scaleX
-                    && Math.abs(this.y / this.scale - other.y / other.scaleYZ) < (1 / this.scale + 1 / other.scaleYZ)
+                    this.x / Ball.scale > (other.x - 1) / Paddle.scaleX
+                    && this.x / Ball.scale < (other.x + 1) / Paddle.scaleX
+                    && Math.abs(this.y / Ball.scale - other.y / Paddle.scaleYZ) < (1 / Ball.scale + 1 / Paddle.scaleYZ)
                 ) {
                     this.speedY = -this.speedY
                 }
-                else if (
-                    this.y / this.scale > (other.y - 1) / other.scaleYZ
-                    && this.y / this.scale < (other.y + 1) / other.scaleYZ
-                    && Math.abs(this.x / this.scale - other.x / other.scaleX) < (1 / this.scale + 1 / other.scaleX)
+                // Vertical
+                // else if (
+                //     this.y / this.scale > (other.y - 1) / other.scaleYZ
+                //     && this.y / this.scale < (other.y + 1) / other.scaleYZ
+                //     && Math.abs(this.x / this.scale - other.x / other.scaleX) < (1 / this.scale + 1 / other.scaleX)
+                // ) {
+                //     this.speedX = -this.speedX;
+                // }
+            }
+
+            if (other instanceof Brick) {
+                // Horizontal
+                if (
+                    this.x / Ball.scale > (other.x - 1) / Brick.scaleX
+                    && this.x / Ball.scale < (other.x + 1) / Brick.scaleX
+                    && Math.abs(this.y / Ball.scale - other.y / Brick.scaleYZ) < (1 / Ball.scale + 1 / Brick.scaleYZ)
                 ) {
+                    other.destroyed = true;
+                    this.speedY = -this.speedY
+                }
+                // Vertical
+                else if (
+                    this.y / Ball.scale > (other.y - 1) / Brick.scaleYZ
+                    && this.y / Ball.scale < (other.y + 1) / Brick.scaleYZ
+                    && Math.abs(this.x / Ball.scale - other.x / Brick.scaleX) < (1 / Ball.scale + 1 / Brick.scaleX)
+                ) {
+                    other.destroyed = true;
                     this.speedX = -this.speedX;
                 }
             }
@@ -215,16 +247,16 @@
             this.x += this.speedX;
             this.y += this.speedY;
 
-            if (Math.abs(this.x) > this.scale - 1)
+            if (Math.abs(this.x) > Ball.scale - 1)
                 this.speedX = -this.speedX;
 
-            if (Math.abs(this.y) > this.scale - 1)
+            if (Math.abs(this.y) > Ball.scale - 1)
                 this.speedY = -this.speedY
         }
 
         draw() {
             M.save()
-            M.scale(1 / this.scale)
+            M.scale(1 / Ball.scale)
             M.translate(this.x, this.y, 0)
             drawMesh(sphereMesh, 'white')
             M.restore();
@@ -232,13 +264,13 @@
     }
 
     class Paddle {
+        static scaleX = 10;
+        static scaleYZ = 50;
+
         x = 0;
         y = -45;
 
         speedX = 0;
-
-        scaleX = 10;
-        scaleYZ = 50;
 
         move_left() {
             this.speedX = -0.5;
@@ -255,24 +287,57 @@
         next_frame() {
             this.x += this.speedX;
 
-            if (this.x < - (this.scaleX - 1))
-                this.x = - (this.scaleX - 1);
+            if (this.x < - (Paddle.scaleX - 1))
+                this.x = - (Paddle.scaleX - 1);
 
-            if (this.x > this.scaleX - 1)
-                this.x = this.scaleX - 1;
+            if (this.x > Paddle.scaleX - 1)
+                this.x = Paddle.scaleX - 1;
         }
 
         draw() {
             M.save()
-            M.scale(1 / this.scaleX, 1 / this.scaleYZ, 1 / this.scaleYZ)
+            M.scale(1 / Paddle.scaleX, 1 / Paddle.scaleYZ, 1 / Paddle.scaleYZ)
             M.translate(this.x, this.y, 0)
             drawMesh(squareMesh, 'red')
             M.restore();
         }
     }
 
+    class Brick {
+        static scaleX = 15;
+        static scaleYZ = 40;
+
+        destroyed = false;
+
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+        }
+
+        draw() {
+            if (this.destroyed)
+                return;
+
+            M.save();
+            M.scale(1 / Brick.scaleX, 1 / Brick.scaleYZ, 1 / Brick.scaleYZ)
+            M.translate(this.x, this.y, 0)
+            drawMesh(squareMesh, 'green')
+            M.restore();
+        }
+    }
+
     const ball = new Ball();
     const paddle = new Paddle();
+    const bricks = [];
+
+    for (let y = - Brick.scaleYZ / 5; y < Brick.scaleYZ - 1; y += 4)
+        for (let x = - Brick.scaleX + 3; x <= Brick.scaleX - 3; x += 3) {
+            bricks.push(new Brick(x, y));
+        }
+
+
+
+    // Brick.
 
     // RECORD WHETHER ANY KEY IS PRESSED
 
