@@ -45,8 +45,28 @@
             <hr>
             <form>
                 <div class="mb-3">
-                    <label for="gameSpeed" class="form-label">Game Speed: <span id="game-speed-value">0.4</span></label>
+                    <label for="gameSpeed" class="form-label">Ball Speed: <span id="game-speed-value">0.4</span></label>
                     <input type="range" class="form-range" min="0.1" max="1" value="0.4" step="0.1" id="gameSpeed">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Split Mode</label>
+                    <div class="btn-group" role="group">
+                        <input type="radio" class="btn-check" name="split-mode" id="split-mode-off" value="off" autocomplete="off" checked>
+                        <label class="btn btn-outline-primary" for="split-mode-off">Off</label>
+
+                        <input type="radio" class="btn-check" name="split-mode" id="split-mode-on" value="on" autocomplete="off">
+                        <label class="btn btn-outline-primary" for="split-mode-on">On</label>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Panic Mode</label>
+                    <div class="btn-group" role="group">
+                        <input type="radio" class="btn-check" name="panic-mode" id="panic-mode-off" value="off" autocomplete="off" checked>
+                        <label class="btn btn-outline-primary" for="panic-mode-off">Off</label>
+
+                        <input type="radio" class="btn-check" name="panic-mode" id="panic-mode-on" value="on" autocomplete="off">
+                        <label class="btn btn-outline-primary" for="panic-mode-on">On</label>
+                    </div>
                 </div>
             </form>
         </div>
@@ -206,36 +226,76 @@
         draw();
     }
 
-    let ball;
+    const colors = ['blue', 'cyan', 'gold', 'green', 'magenta', 'yellow'];
+
+    let balls;
     let paddle;
     let bricks;
 
-    let running = false;
+    let is_running = false;
+    let is_panic_mode = false;
+    let is_split_mode = false;
 
     const next_frame = () => {
-        if (!running)
+        if (!is_running)
             return;
 
-        ball.next_frame();
+        for (const ball of balls)
+            ball.next_frame();
         paddle.next_frame();
+
+        if (is_panic_mode)
+            for (const brick of bricks)
+                brick.next_frame();
     }
 
     const hit_detection = () => {
-        if (!running)
+        if (!is_running)
             return;
 
-        ball.hit_detection(paddle);
+        for (const ball of balls)
+            ball.hit_detection(paddle);
 
         for (const brick of bricks) {
             if (brick.destroyed)
                 continue;
 
-            ball.hit_detection(brick);
+            const n = balls.length;
+
+            for (let i = 0; i < n; i ++){
+                const ball = balls[i];
+
+                if (ball.die)
+                    continue;
+
+                const result = ball.hit_detection(brick);
+
+                if (!is_split_mode || result === undefined)
+                    continue;
+
+                if (result === 'h')
+                    balls.push(new Ball(ball.x, ball.y, ball.speed, -ball.directionX, ball.directionY));
+
+                if (result === 'v')
+                    balls.push(new Ball(ball.x, ball.y, ball.speed, ball.directionX, -ball.directionY));
+            }
+
+
+            brick.hit_detection(paddle);
+
+            for (const other of bricks) {
+                if (other.destroyed || other === brick)
+                    continue;
+
+                brick.hit_detection(other)
+            }
         }
     }
 
     const draw = () => {
-        ball.draw();
+        for (const ball of balls)
+            ball.draw();
+
         paddle.draw();
 
         for (const brick of bricks)
@@ -245,27 +305,31 @@
     const new_game = () => {
         pause_game();
 
-        ball = new Ball();
+        balls = [new Ball(0, -23, 0.4, Math.floor(Math.random() * 2) * 2 - 1, 1)];
         paddle = new Paddle();
         bricks = [];
 
-        running = false;
+        is_running = false;
 
         for (let y = - Brick.scaleYZ / 5; y < Brick.scaleYZ - 1; y += 4)
             for (let x = - Brick.scaleX + 3; x <= Brick.scaleX - 3; x += 3) {
-                bricks.push(new Brick(x, y));
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                const directionX = Math.floor(Math.random() * 2) * 2 - 1;
+                const directionY = Math.floor(Math.random() * 2) * 2 - 1;
+                const speed = (Math.floor(Math.random() * 4) + 1) / 10;
+                bricks.push(new Brick(x, y, color, directionX, directionY, speed));
             }
     }
 
     const start_game = () => {
-        running = true;
+        is_running = true;
         $("#start-pause-btn").html("Pause");
         $("#start-pause-btn").removeClass('btn-primary');
         $("#start-pause-btn").addClass('btn-warning');
     }
 
     const pause_game = () => {
-        running = false;
+        is_running = false;
         $("#start-pause-btn").html("Start");
         $("#start-pause-btn").removeClass('btn-warning');
         $("#start-pause-btn").addClass('btn-primary');
@@ -273,12 +337,23 @@
 
     const change_speed = () => {
         const speed = parseFloat($("#gameSpeed").val());
-        ball.speed = speed;
+
+        for (const ball of balls)
+            ball.speed = speed;
+
         $("#game-speed-value").html(speed);
     }
 
+    const change_split_mode = () => {
+        is_split_mode = $('input:radio[name="split-mode"]:checked').val() === 'on'
+    }
+
+    const change_panic_mode = () => {
+        is_panic_mode = $('input:radio[name="panic-mode"]:checked').val() === 'on'
+    }
+
     $("#start-pause-btn").click(() => {
-        if (running)
+        if (is_running)
             pause_game();
         else
             start_game();
@@ -286,6 +361,8 @@
 
     $("#new-game-btn").click(new_game);
     $("#gameSpeed").on('input change', change_speed);
+    $('input:radio[name="split-mode"]').change(change_split_mode);
+    $('input:radio[name="panic-mode"]').change(change_panic_mode);
 
     new_game();
 
