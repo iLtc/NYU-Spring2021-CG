@@ -6,7 +6,7 @@
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
-    <title>Hello, world!</title>
+    <title>Brick Breaker</title>
 
     <style>
         canvas {
@@ -15,7 +15,10 @@
             display: block;
             width: 800px;
             height: 800px;
-            border:3px solid #f8f9fa;
+        }
+
+        .btn-group {
+            width: 100%;
         }
     </style>
 </head>
@@ -24,6 +27,7 @@
 <script src=math.js></script>
 <script src=matrix.js></script>
 <script src=geometry.js></script>
+<script src=game.js></script>
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark" style="margin-bottom: 20px;">
     <div class="container-fluid">
@@ -31,7 +35,27 @@
     </div>
 </nav>
 
-<canvas id='canvas1' width="800" height="800"></canvas>
+<div class="container">
+    <div class="row">
+        <div class="col-3 p-5 text-white bg-dark rounded-3 border">
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-primary" id="start-pause-btn">Start</button>
+                <button type="button" class="btn btn-info" id="new-game-btn">New Game</button>
+            </div>
+            <hr>
+            <form>
+                <div class="mb-3">
+                    <label for="gameSpeed" class="form-label">Game Speed: <span id="game-speed-value">0.4</span></label>
+                    <input type="range" class="form-range" min="0.1" max="1" value="0.4" step="0.1" id="gameSpeed">
+                </div>
+            </form>
+        </div>
+        <div class="col-9">
+            <canvas id='canvas1' width="800" height="800" class="bg-dark rounded-3 border"></canvas>
+        </div>
+    </div>
+</div>
+
 
 <!--<span style="font-size: large; ">
     The first button shuffles the list. The second button starts or pauses the animation.
@@ -101,6 +125,9 @@
     }
 </script>
 
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js"></script>
+
 <!!-------- GENERAL SUPPORT CODE -------->
 <script>
 
@@ -156,17 +183,8 @@
     function animate(gl) {
         let time = (Date.now() - startTime) / 1000;
 
-        ball.next_frame();
-        paddle.next_frame();
-
-        ball.hit_detection(paddle);
-
-        for (const brick of bricks) {
-            if (brick.destroyed)
-                continue;
-
-            ball.hit_detection(brick);
-        }
+        next_frame();
+        hit_detection();
 
         // SET ANIMATION TIME IN FRAGMENT SHADER
 
@@ -185,6 +203,38 @@
 
         setUniform('Matrix4fv', 'uCamera', false, matrix_perspective(3));
 
+        draw();
+    }
+
+    let ball;
+    let paddle;
+    let bricks;
+
+    let running = false;
+
+    const next_frame = () => {
+        if (!running)
+            return;
+
+        ball.next_frame();
+        paddle.next_frame();
+    }
+
+    const hit_detection = () => {
+        if (!running)
+            return;
+
+        ball.hit_detection(paddle);
+
+        for (const brick of bricks) {
+            if (brick.destroyed)
+                continue;
+
+            ball.hit_detection(brick);
+        }
+    }
+
+    const draw = () => {
         ball.draw();
         paddle.draw();
 
@@ -192,152 +242,52 @@
             brick.draw();
     }
 
-    class Ball {
-        static scale = 30
+    const new_game = () => {
+        pause_game();
 
-        x = 0;
-        y = -5;
+        ball = new Ball();
+        paddle = new Paddle();
+        bricks = [];
 
-        speedX = 0.4;
-        speedY = 0.4;
+        running = false;
 
-        hit_detection(other) {
-            if (other instanceof Paddle) {
-                // Horizontal
-                if (
-                    this.x / Ball.scale > (other.x - 1) / Paddle.scaleX
-                    && this.x / Ball.scale < (other.x + 1) / Paddle.scaleX
-                    && Math.abs(this.y / Ball.scale - other.y / Paddle.scaleYZ) < (1 / Ball.scale + 1 / Paddle.scaleYZ)
-                ) {
-                    this.speedY = -this.speedY
-                }
-                // Vertical
-                // else if (
-                //     this.y / this.scale > (other.y - 1) / other.scaleYZ
-                //     && this.y / this.scale < (other.y + 1) / other.scaleYZ
-                //     && Math.abs(this.x / this.scale - other.x / other.scaleX) < (1 / this.scale + 1 / other.scaleX)
-                // ) {
-                //     this.speedX = -this.speedX;
-                // }
+        for (let y = - Brick.scaleYZ / 5; y < Brick.scaleYZ - 1; y += 4)
+            for (let x = - Brick.scaleX + 3; x <= Brick.scaleX - 3; x += 3) {
+                bricks.push(new Brick(x, y));
             }
-
-            if (other instanceof Brick) {
-                // Horizontal
-                if (
-                    this.x / Ball.scale > (other.x - 1) / Brick.scaleX
-                    && this.x / Ball.scale < (other.x + 1) / Brick.scaleX
-                    && Math.abs(this.y / Ball.scale - other.y / Brick.scaleYZ) < (1 / Ball.scale + 1 / Brick.scaleYZ)
-                ) {
-                    other.destroyed = true;
-                    this.speedY = -this.speedY
-                }
-                // Vertical
-                else if (
-                    this.y / Ball.scale > (other.y - 1) / Brick.scaleYZ
-                    && this.y / Ball.scale < (other.y + 1) / Brick.scaleYZ
-                    && Math.abs(this.x / Ball.scale - other.x / Brick.scaleX) < (1 / Ball.scale + 1 / Brick.scaleX)
-                ) {
-                    other.destroyed = true;
-                    this.speedX = -this.speedX;
-                }
-            }
-        }
-
-        next_frame() {
-            this.x += this.speedX;
-            this.y += this.speedY;
-
-            if (Math.abs(this.x) > Ball.scale - 1)
-                this.speedX = -this.speedX;
-
-            if (Math.abs(this.y) > Ball.scale - 1)
-                this.speedY = -this.speedY
-        }
-
-        draw() {
-            M.save()
-            M.scale(1 / Ball.scale)
-            M.translate(this.x, this.y, 0)
-            drawMesh(sphereMesh, 'white')
-            M.restore();
-        }
     }
 
-    class Paddle {
-        static scaleX = 10;
-        static scaleYZ = 50;
-
-        x = 0;
-        y = -45;
-
-        speedX = 0;
-
-        move_left() {
-            this.speedX = -0.5;
-        }
-
-        move_right() {
-            this.speedX = 0.5;
-        }
-
-        stop() {
-            this.speedX = 0;
-        }
-
-        next_frame() {
-            this.x += this.speedX;
-
-            if (this.x < - (Paddle.scaleX - 1))
-                this.x = - (Paddle.scaleX - 1);
-
-            if (this.x > Paddle.scaleX - 1)
-                this.x = Paddle.scaleX - 1;
-        }
-
-        draw() {
-            M.save()
-            M.scale(1 / Paddle.scaleX, 1 / Paddle.scaleYZ, 1 / Paddle.scaleYZ)
-            M.translate(this.x, this.y, 0)
-            drawMesh(squareMesh, 'red')
-            M.restore();
-        }
+    const start_game = () => {
+        running = true;
+        $("#start-pause-btn").html("Pause");
+        $("#start-pause-btn").removeClass('btn-primary');
+        $("#start-pause-btn").addClass('btn-warning');
     }
 
-    class Brick {
-        static scaleX = 15;
-        static scaleYZ = 40;
-
-        destroyed = false;
-
-        constructor(x, y) {
-            this.x = x;
-            this.y = y;
-        }
-
-        draw() {
-            if (this.destroyed)
-                return;
-
-            M.save();
-            M.scale(1 / Brick.scaleX, 1 / Brick.scaleYZ, 1 / Brick.scaleYZ)
-            M.translate(this.x, this.y, 0)
-            drawMesh(squareMesh, 'green')
-            M.restore();
-        }
+    const pause_game = () => {
+        running = false;
+        $("#start-pause-btn").html("Start");
+        $("#start-pause-btn").removeClass('btn-warning');
+        $("#start-pause-btn").addClass('btn-primary');
     }
 
-    const ball = new Ball();
-    const paddle = new Paddle();
-    const bricks = [];
+    const change_speed = () => {
+        const speed = parseFloat($("#gameSpeed").val());
+        ball.speed = speed;
+        $("#game-speed-value").html(speed);
+    }
 
-    for (let y = - Brick.scaleYZ / 5; y < Brick.scaleYZ - 1; y += 4)
-        for (let x = - Brick.scaleX + 3; x <= Brick.scaleX - 3; x += 3) {
-            bricks.push(new Brick(x, y));
-        }
+    $("#start-pause-btn").click(() => {
+        if (running)
+            pause_game();
+        else
+            start_game();
+    });
 
+    $("#new-game-btn").click(new_game);
+    $("#gameSpeed").on('input change', change_speed);
 
-
-    // Brick.
+    new_game();
 
     // RECORD WHETHER ANY KEY IS PRESSED
 
@@ -358,7 +308,6 @@
 
     gl_start(canvas1, vs, fs);
 </script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
 
