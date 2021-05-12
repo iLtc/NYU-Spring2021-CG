@@ -1,7 +1,7 @@
 class Ball {
     static scale = 30
 
-    die = false;
+    dead = false;
 
     is_hitting_paddle = false;
 
@@ -57,7 +57,7 @@ class Ball {
     }
 
     next_frame() {
-        if (this.die)
+        if (this.dead)
             return;
 
         this.x += this.speed * this.directionX;
@@ -70,11 +70,11 @@ class Ball {
             this.directionY = -this.directionY;
 
         if (this.y < - (Ball.scale - 1))
-            this.die = true
+            this.dead = true
     }
 
     draw() {
-        if (this.die)
+        if (this.dead)
             return;
 
         M.save()

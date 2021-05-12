@@ -38,6 +38,21 @@
 <div class="container">
     <div class="row">
         <div class="col-3 p-5 text-white bg-dark rounded-3 border">
+            <div class="alert alert-primary" role="alert">
+                Use <kbd>←</kbd> and <kbd>→</kbd> keys on the keyboard to control the paddle.
+            </div>
+            <div class="alert alert-danger" role="alert" id="lost-msg" style="display: none">
+                You lost the game!
+            </div>
+            <div class="alert alert-success" role="alert" id="won-msg" style="display: none">
+                You won the game!
+            </div>
+            <div class="card text-white bg-secondary" style="margin-bottom: 16px;">
+                <div class="card-body">
+                    <p class="card-text">Balls Left: <span id="balls-left-value">1</span></p>
+                    <p class="card-text">Bricks Left: <span id="bricks-left-value">108</span></p>
+                </div>
+            </div>
             <div class="btn-group" role="group">
                 <button type="button" class="btn btn-primary" id="start-pause-btn">Start</button>
                 <button type="button" class="btn btn-info" id="new-game-btn">New Game</button>
@@ -233,8 +248,30 @@
     let bricks;
 
     let is_running = false;
+    let is_game_over = false;
     let is_panic_mode = false;
     let is_split_mode = false;
+
+    const count = () => {
+        let ballsValue = 0;
+        let bricksValue = 0;
+
+        for (const ball of balls)
+            if (!ball.dead)
+                ballsValue += 1;
+
+        for (const brick of bricks)
+            if (!brick.destroyed)
+                bricksValue += 1;
+
+        $("#balls-left-value").html(ballsValue);
+        $("#bricks-left-value").html(bricksValue);
+
+        if (bricksValue === 0)
+            stop_game(true);
+        else if (ballsValue === 0)
+            stop_game(false);
+    }
 
     const next_frame = () => {
         if (!is_running)
@@ -265,7 +302,7 @@
             for (let i = 0; i < n; i ++){
                 const ball = balls[i];
 
-                if (ball.die)
+                if (ball.dead)
                     continue;
 
                 const result = ball.hit_detection(brick);
@@ -290,6 +327,8 @@
                 brick.hit_detection(other)
             }
         }
+
+        count();
     }
 
     const draw = () => {
@@ -305,11 +344,14 @@
     const new_game = () => {
         pause_game();
 
-        balls = [new Ball(0, -23, 0.4, Math.floor(Math.random() * 2) * 2 - 1, 1)];
+        const speed = parseFloat($("#gameSpeed").val())
+
+        balls = [new Ball(0, -23, speed, Math.floor(Math.random() * 2) * 2 - 1, 1)];
         paddle = new Paddle();
         bricks = [];
 
         is_running = false;
+        is_game_over = false;
 
         for (let y = - Brick.scaleYZ / 5; y < Brick.scaleYZ - 1; y += 4)
             for (let x = - Brick.scaleX + 3; x <= Brick.scaleX - 3; x += 3) {
@@ -319,6 +361,13 @@
                 const speed = (Math.floor(Math.random() * 4) + 1) / 10;
                 bricks.push(new Brick(x, y, color, directionX, directionY, speed));
             }
+
+        $("#balls-left-value").html(1);
+        $("#bricks-left-value").html(108);
+
+        $("#start-pause-btn").prop("disabled", false);
+        $("#won-msg").slideUp();
+        $("#lost-msg").slideUp();
     }
 
     const start_game = () => {
@@ -333,6 +382,18 @@
         $("#start-pause-btn").html("Start");
         $("#start-pause-btn").removeClass('btn-warning');
         $("#start-pause-btn").addClass('btn-primary');
+    }
+
+    const stop_game = (is_winning) => {
+        is_running = false;
+        is_game_over = true;
+
+        $("#start-pause-btn").prop("disabled",true);
+
+        if (is_winning)
+            $("#won-msg").slideDown();
+        else
+            $("#lost-msg").slideDown();
     }
 
     const change_speed = () => {
@@ -369,6 +430,9 @@
     // RECORD WHETHER ANY KEY IS PRESSED
 
     canvas1.onKeyPress   = k => {
+        if (!is_game_over && !is_running)
+            start_game();
+
         if (k === 37)
             paddle.move_left();
 
