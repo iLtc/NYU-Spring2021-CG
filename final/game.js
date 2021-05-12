@@ -19,7 +19,7 @@ class Ball {
             if (
                 this.x / Ball.scale > (other.x - 1) / Paddle.scaleX
                 && this.x / Ball.scale < (other.x + 1) / Paddle.scaleX
-                && Math.abs(this.y / Ball.scale - other.y / Paddle.scaleYZ) < (1 / Ball.scale + 1 / Paddle.scaleYZ)
+                && Math.abs(this.y / Ball.scale - other.y / Paddle.scaleYZ) <= (1 / Ball.scale + 1 / Paddle.scaleYZ)
             ) {
                 if (!this.is_hitting_paddle){
                     this.directionY = -this.directionY;
@@ -35,7 +35,7 @@ class Ball {
             if (
                 this.x / Ball.scale > (other.x - 1) / Brick.scaleX
                 && this.x / Ball.scale < (other.x + 1) / Brick.scaleX
-                && Math.abs(this.y / Ball.scale - other.y / Brick.scaleYZ) < (1 / Ball.scale + 1 / Brick.scaleYZ)
+                && Math.abs(this.y / Ball.scale - other.y / Brick.scaleYZ) <= (1 / Ball.scale + 1 / Brick.scaleYZ)
             ) {
                 other.destroyed = true;
                 this.directionY = -this.directionY;
@@ -46,7 +46,7 @@ class Ball {
             else if (
                 this.y / Ball.scale > (other.y - 1) / Brick.scaleYZ
                 && this.y / Ball.scale < (other.y + 1) / Brick.scaleYZ
-                && Math.abs(this.x / Ball.scale - other.x / Brick.scaleX) < (1 / Ball.scale + 1 / Brick.scaleX)
+                && Math.abs(this.x / Ball.scale - other.x / Brick.scaleX) <= (1 / Ball.scale + 1 / Brick.scaleX)
             ) {
                 other.destroyed = true;
                 this.directionX = -this.directionX;
@@ -146,7 +146,7 @@ class Brick {
             if (
                 this.x / Brick.scaleX > (other.x - 1) / Paddle.scaleX
                 && this.x / Brick.scaleX < (other.x + 1) / Paddle.scaleX
-                && Math.abs(this.y / Brick.scaleYZ - other.y / Paddle.scaleYZ) < (1 / Brick.scaleYZ + 1 / Paddle.scaleYZ)
+                && Math.abs(this.y / Brick.scaleYZ - other.y / Paddle.scaleYZ) <= (1 / Brick.scaleYZ + 1 / Paddle.scaleYZ)
             ) {
                 this.directionY = -this.directionY;
             }
@@ -154,7 +154,7 @@ class Brick {
             else if (
                 this.y / Brick.scaleYZ > (other.y - 1) / Paddle.scaleYZ
                 && this.y / Brick.scaleYZ < (other.y + 1) / Paddle.scaleYZ
-                && Math.abs(this.x / Brick.scaleX - other.x / Paddle.scaleX) < (1 / Brick.scaleX + 1 / Paddle.scaleX)
+                && Math.abs(this.x / Brick.scaleX - other.x / Paddle.scaleX) <= (1 / Brick.scaleX + 1 / Paddle.scaleX)
             ) {
                 this.directionX = -this.directionX;
             }
@@ -165,7 +165,7 @@ class Brick {
             if (
                 this.x / Brick.scaleX > (other.x - 1) / Brick.scaleX
                 && this.x / Brick.scaleX < (other.x + 1) / Brick.scaleX
-                && Math.abs(this.y / Brick.scaleYZ - other.y / Brick.scaleYZ) < (1 / Brick.scaleYZ + 1 / Brick.scaleYZ)
+                && Math.abs(this.y / Brick.scaleYZ - other.y / Brick.scaleYZ) <= (1 / Brick.scaleYZ + 1 / Brick.scaleYZ)
             ) {
                 this.directionY = -this.directionY;
             }
@@ -173,7 +173,7 @@ class Brick {
             else if (
                 this.y / Brick.scaleYZ > (other.y - 1) / Brick.scaleYZ
                 && this.y / Brick.scaleYZ < (other.y + 1) / Brick.scaleYZ
-                && Math.abs(this.x / Brick.scaleX - other.x / Brick.scaleX) < (1 / Brick.scaleX + 1 / Brick.scaleX)
+                && Math.abs(this.x / Brick.scaleX - other.x / Brick.scaleX) <= (1 / Brick.scaleX + 1 / Brick.scaleX)
             ) {
                 this.directionX = -this.directionX;
             }
