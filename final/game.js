@@ -199,7 +199,7 @@ class Brick {
             return;
 
         M.save();
-        M.scale(1 / Brick.scaleX, 1 / Brick.scaleYZ, 1 / Brick.scaleYZ)
+        M.scale(1 / Brick.scaleX, 1 / Brick.scaleYZ, 1 / Brick.scaleX)
         M.translate(this.x, this.y, 0)
         drawMesh(cubeMesh, this.color)
         M.restore();
